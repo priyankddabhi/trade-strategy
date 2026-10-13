@@ -1,0 +1,441 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Paper Trading Bot</title>
+<link rel="icon" href="data:,">
+<style>
+:root{--bg:#0d1117;--card:#161b22;--line:#30363d;--line2:#21262d;--fg:#e6edf3;--muted:#8b949e;
+--pos:#3fb950;--neg:#f85149;--warn:#d29922;--accent:#58a6ff;--posbg:#12261e;--negbg:#2d1214;--warnbg:#272115}
+*{box-sizing:border-box}
+body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;background:var(--bg);color:var(--fg);
+margin:0;padding:28px 16px 60px;line-height:1.5}
+.wrap{max-width:1180px;margin:0 auto}
+h1{font-size:28px;margin:0 0 4px}
+h2{font-size:19px;margin:36px 0 14px;padding-bottom:8px;border-bottom:1px solid var(--line)}
+h3{font-size:15px;margin:24px 0 10px}
+.sub{color:var(--muted);font-size:14px;margin-bottom:20px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:20px;margin-bottom:20px}
+.card.flush{padding:0;overflow-x:auto}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(215px,100%),1fr));gap:14px}
+.kpi{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:16px 18px;min-width:0}
+.kpi .label,.label{color:var(--muted);font-size:11px;text-transform:uppercase;letter-spacing:.07em;margin-bottom:7px}
+.kpi .value{font-size:25px;font-weight:650;font-variant-numeric:tabular-nums;overflow-wrap:anywhere}
+.kpi .note{color:var(--muted);font-size:12px;margin-top:5px}
+.pos{color:var(--pos)}.neg{color:var(--neg)}.warn{color:var(--warn)}
+table{width:100%;border-collapse:collapse;font-size:13.5px}
+th{text-align:left;color:var(--muted);font-weight:600;font-size:11px;text-transform:uppercase;letter-spacing:.06em;
+padding:9px 11px;border-bottom:1px solid var(--line);white-space:nowrap}
+td{padding:9px 11px;border-bottom:1px solid var(--line2);font-variant-numeric:tabular-nums;white-space:nowrap}
+tr:last-child td{border-bottom:none}
+td.n,th.n{text-align:right}
+td.why{white-space:normal;color:var(--muted);font-size:12.5px;padding-top:0}
+.mono{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:12.5px}
+.tag{display:inline-block;padding:2px 9px;border-radius:20px;font-size:11px;font-weight:600;
+border:1px solid var(--line);background:var(--line2)}
+.tag.good{background:var(--posbg);color:var(--pos);border-color:#238636}
+.tag.bad{background:var(--negbg);color:var(--neg);border-color:#da3633}
+.tag.warn{background:var(--warnbg);color:var(--warn);border-color:#9e6a03}
+.verdict{padding:16px 20px;border-radius:10px;margin:18px 0;font-size:14.5px}
+.verdict.good{background:var(--posbg);border-left:4px solid var(--pos)}
+.verdict.bad{background:var(--negbg);border-left:4px solid var(--neg)}
+.finding{background:var(--card);border:1px solid var(--line);border-left:4px solid var(--warn);border-radius:8px;
+padding:14px 18px;margin:12px 0;font-size:14px}
+.finding b{color:var(--warn)}
+.finding.good{border-left-color:var(--pos)}.finding.good b{color:var(--pos)}
+.finding.bad{border-left-color:var(--neg)}.finding.bad b{color:var(--neg)}
+.finding.info{border-left-color:var(--accent)}.finding.info b{color:var(--accent)}
+code{background:var(--line2);padding:1px 6px;border-radius:4px;font-size:12.5px}
+button{font:inherit;font-size:14px;border:1px solid var(--line);background:var(--card);color:var(--fg);
+padding:8px 14px;border-radius:8px;cursor:pointer}
+button:hover{border-color:var(--muted)}
+button.primary{background:#238636;border-color:#2ea043;color:#fff}
+button.danger{color:var(--neg);border-color:#da3633}
+button:disabled{opacity:.55;cursor:default}
+input{font:inherit;font-size:14px;padding:8px 10px;border:1px solid var(--line);border-radius:8px;background:var(--bg);
+color:var(--fg);flex:1 1 120px;min-width:0;max-width:200px}
+.top{display:flex;flex-wrap:wrap;gap:14px;align-items:flex-start;justify-content:space-between}
+.bar{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.live{display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--pos);margin-right:6px;
+vertical-align:middle;animation:pulse 2s infinite}
+@keyframes pulse{50%{opacity:.35}}
+.pick{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(320px,100%),1fr));gap:18px;margin-top:24px}
+.pick .card{display:flex;flex-direction:column;gap:6px;margin:0}
+.pick h2{border:0;margin:0;padding:0;font-size:24px}
+.pick .row{display:flex;justify-content:space-between;gap:10px;font-size:14px;border-bottom:1px solid var(--line2);padding:6px 0}
+.pick .row span:first-child{color:var(--muted)}
+.pick button{margin-top:12px;font-size:16px;padding:12px}
+svg.chart{width:100%;height:210px;display:block}
+.toast{position:fixed;left:50%;bottom:22px;transform:translateX(-50%);background:var(--fg);color:var(--bg);
+padding:11px 18px;border-radius:10px;font-size:14px;max-width:92vw;display:none;z-index:9}
+details summary{cursor:pointer;color:var(--accent);font-size:14px;margin:8px 0}
+pre{white-space:pre-wrap;font-size:12px;color:var(--muted);margin:0}
+.empty{color:var(--muted);font-size:14px;padding:16px 20px}
+@media (max-width:520px){body{padding:18px 12px 50px}h1{font-size:23px}.kpi .value{font-size:21px}}
+.livebar{display:flex;flex-wrap:wrap;gap:28px;align-items:center;margin-top:6px}
+.lv{min-width:110px}.livenum{font-size:30px;font-weight:700;line-height:1.15}.chg{font-size:13px;font-weight:600}
+.livechart{flex:1;min-width:220px}.livechart svg{width:100%;height:80px;display:block}
+.movers{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(190px,100%),1fr));gap:12px;margin-top:16px}
+.mv{background:var(--bg);border:1px solid var(--line2);border-radius:10px;padding:12px 14px;min-width:0}
+.mvtop{display:flex;justify-content:space-between;align-items:baseline}.mvprice{font-size:20px;font-weight:700;margin:2px 0 4px}
+.mv svg{width:100%;height:44px;display:block}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div id="app"><p class="sub">Loading…</p></div>
+</div>
+<div class="toast" id="toast" role="status"></div>
+
+<script>
+const LOCALE = {INR: "en-IN", USD: "en-US"};
+let market = null, timer = null, wasRunning = false;
+const autoStarted = {};
+
+function el(tag, attrs = {}, ...kids) {
+  const e = document.createElement(tag);
+  for (const [k, v] of Object.entries(attrs || {})) {
+    if (v === null || v === undefined || v === false) continue;
+    if (k === "class") e.className = v;
+    else if (k.startsWith("on")) e.addEventListener(k.slice(2), v);
+    else e.setAttribute(k, v === true ? "" : v);
+  }
+  for (const kid of kids.flat(3)) if (kid !== null && kid !== undefined && kid !== false)
+    e.append(kid.nodeType ? kid : String(kid));
+  return e;
+}
+const money = (v, cur, d = 0) => v === null || v === undefined ? "–" :
+  new Intl.NumberFormat(LOCALE[cur] || "en-US", {style: "currency", currency: cur,
+    minimumFractionDigits: d, maximumFractionDigits: d}).format(v);
+const num = (v, d = 2) => v === null || v === undefined ? "–" :
+  Number(v).toLocaleString("en-US", {minimumFractionDigits: d, maximumFractionDigits: d});
+const pct = (v, d = 2) => v === null || v === undefined ? "–" : (v >= 0 ? "+" : "−") + Math.abs(v * 100).toFixed(d) + "%";
+const signed = (v, cur, d = 0) => v === null || v === undefined ? "–" : (v >= 0 ? "+" : "−") + money(Math.abs(v), cur, d);
+const tone = (v) => v > 0 ? "pos" : v < 0 ? "neg" : "";
+const rfmt = (v) => v === null || v === undefined ? "–" : (v >= 0 ? "+" : "−") + Math.abs(v).toFixed(2) + "R";
+
+function toast(msg) {
+  const t = document.getElementById("toast"); t.textContent = msg; t.style.display = "block";
+  clearTimeout(toast.t); toast.t = setTimeout(() => t.style.display = "none", 5000);
+}
+async function post(url, body) {
+  const r = await fetch(url, {method: "POST", headers: {"Content-Type": "application/json"}, body: JSON.stringify(body || {})});
+  const d = await r.json().catch(() => ({}));
+  if (!r.ok) throw new Error(d.detail || r.statusText);
+  return d;
+}
+function remember(m) { try { m ? localStorage.setItem("tbot.market", m) : localStorage.removeItem("tbot.market"); } catch (e) {} }
+function recall() { try { return localStorage.getItem("tbot.market"); } catch (e) { return null; } }
+
+const kpi = (label, value, cls, note) => el("div", {class: "kpi"},
+  el("div", {class: "label"}, label), el("div", {class: "value " + (cls || "")}, value),
+  note ? el("div", {class: "note"}, note) : null);
+
+function table(cols, rows, extraRow) {
+  if (!rows.length) return el("div", {class: "card flush"}, el("div", {class: "empty"}, "None right now."));
+  const body = [];
+  for (const r of rows) {
+    body.push(el("tr", {}, cols.map(c => el("td", {class: [c.n ? "n" : "", c.mono ? "mono" : "",
+      c.tone ? tone(c.tone(r)) : ""].join(" ")}, c.get(r)))));
+    if (extraRow) { const x = extraRow(r); if (x) body.push(el("tr", {}, el("td", {class: "why", colspan: cols.length}, x))); }
+  }
+  return el("div", {class: "card flush"}, el("table", {},
+    el("thead", {}, el("tr", {}, cols.map(c => el("th", {class: c.n ? "n" : ""}, c.label)))), el("tbody", {}, body)));
+}
+
+function spark(points, w, h, base) {
+  const ns = "http://www.w3.org/2000/svg", svg = document.createElementNS(ns, "svg");
+  if (!points || points.length < 2) return svg;
+  const lo = Math.min(...points), hi = Math.max(...points), span = (hi - lo) || 1, P = 3;
+  const x = i => P + i * (w - 2 * P) / (points.length - 1), y = v => P + (hi - v) * (h - 2 * P) / span;
+  const line = points.map((v, i) => `${x(i).toFixed(1)},${y(v).toFixed(1)}`).join(" ");
+  const color = points[points.length - 1] >= (base ?? points[0]) ? "var(--pos)" : "var(--neg)";
+  svg.setAttribute("viewBox", `0 0 ${w} ${h}`); svg.setAttribute("class", "spark"); svg.setAttribute("preserveAspectRatio", "none");
+  const mk = (t, a) => { const e = document.createElementNS(ns, t); for (const k in a) e.setAttribute(k, a[k]); svg.append(e); };
+  mk("polygon", {points: `${P},${h - P} ${line} ${w - P},${h - P}`, fill: color, opacity: "0.13"});
+  mk("line", {x1: P, x2: w - P, y1: y(points[0]), y2: y(points[0]), stroke: "#8b949e", "stroke-dasharray": "3 3", opacity: "0.5"});
+  mk("polyline", {points: line, fill: "none", stroke: color, "stroke-width": "2", "stroke-linejoin": "round"});
+  return svg;
+}
+
+function liveCard(m) {
+  const k = m.card, c = m.currency;
+  if (!k || !k.index) return null;
+  const big = (s, tag) => el("div", {class: "lv"}, el("div", {class: "label"}, s.label), el("div", {class: "livenum " + (tag || "")}, num(s.last, 2)),
+    el("div", {class: "chg " + tone(s.change)}, pct(s.change)));
+  return el("div", {class: "card"},
+    el("div", {class: "label"}, el("span", {class: "live"}), `Live market · ${m.name} · ${k.index.time}`),
+    el("div", {class: "livebar"},
+      big(k.index),
+      k.fear ? el("div", {class: "lv"}, el("div", {class: "label"}, k.fear.label), el("div", {class: "livenum " + (k.fear.last > 20 ? "warn" : "")}, num(k.fear.last, 2)),
+        el("div", {class: "chg", style: "color:var(--muted)"}, "volatility")) : null,
+      el("div", {class: "livechart"}, spark(k.index.trend, 520, 80))),
+    k.stocks.length ? el("div", {class: "movers"}, k.stocks.map(s => el("div", {class: "mv"},
+      el("div", {class: "mvtop"}, el("b", {}, s.symbol), el("span", {class: "chg " + tone(s.change)}, pct(s.change))),
+      el("div", {class: "mvprice"}, money(s.last, c, 2)),
+      spark(s.trend, 160, 44),
+      el("div", {class: "sub", style: "margin:2px 0 0;font-size:11px"}, "60 days · " + s.time)))) : null);
+}
+
+function exitTag(reason) {
+  const r = String(reason || "");
+  const map = [["Target", "target", "good"], ["Gapped above", "target_gap", "good"], ["Breakeven or trailing", "trailing_stop", "warn"],
+    ["Stop-loss", "stop_loss", "bad"], ["Gapped below", "gap_down", "bad"], ["fell below", "trend_break", "warn"],
+    ["Manual", "manual", ""]];
+  const hit = map.find(([k]) => r.includes(k));
+  return el("span", {class: "tag " + (hit ? hit[2] : ""), title: r}, hit ? hit[1] : "exit");
+}
+
+function chart(points, base, cur) {
+  if (!points || points.length < 2) return el("div", {class: "card"}, el("div", {class: "label"}, "Equity curve"),
+    el("div", {class: "sub", style: "margin:0"}, "The curve appears after a few sessions of the simulation."));
+  const W = 1080, H = 210, P = 14, vals = points.map(p => p[1]);
+  const lo = Math.min(...vals, base), hi = Math.max(...vals, base), span = (hi - lo) || 1;
+  const x = i => P + i * (W - 2 * P) / (vals.length - 1), y = v => P + (hi - v) * (H - 2 * P) / span;
+  const line = vals.map((v, i) => `${x(i).toFixed(1)},${y(v).toFixed(1)}`).join(" ");
+  const color = vals[vals.length - 1] >= base ? "var(--pos)" : "var(--neg)";
+  const ns = "http://www.w3.org/2000/svg", svg = document.createElementNS(ns, "svg");
+  svg.setAttribute("viewBox", `0 0 ${W} ${H}`); svg.setAttribute("class", "chart");
+  svg.setAttribute("role", "img"); svg.setAttribute("aria-label", "Equity curve");
+  const mk = (t, a) => { const e = document.createElementNS(ns, t); for (const k in a) e.setAttribute(k, a[k]); svg.append(e); };
+  mk("polygon", {points: `${P},${H - P} ${line} ${W - P},${H - P}`, fill: color, opacity: "0.11"});
+  mk("polyline", {points: line, fill: "none", stroke: color, "stroke-width": "2.2", "stroke-linejoin": "round"});
+  mk("line", {x1: P, x2: W - P, y1: y(base), y2: y(base), stroke: "#8b949e", "stroke-dasharray": "4 4", opacity: "0.55"});
+  return el("div", {class: "card"}, el("div", {class: "label"}, "Equity curve (virtual money, real prices)"), svg,
+    el("div", {class: "sub", style: "margin:6px 0 0"}, `${points[0][0]} to ${points[points.length - 1][0]} · dashed line = money put in (${money(base, cur)}) · low ${money(Math.min(...vals), cur)} · high ${money(Math.max(...vals), cur)}`));
+}
+
+// ---------------------------------------------------------------- start screen
+async function showStart() {
+  market = null; clearInterval(timer);
+  const app = document.getElementById("app");
+  let d;
+  try { d = await (await fetch("/api/markets")).json(); }
+  catch (e) { app.replaceChildren(el("p", {class: "sub"}, "Cannot reach the bot. Is the website window still open?")); return; }
+  app.replaceChildren(
+    el("h1", {}, "Paper Trading Bot"),
+    el("div", {class: "sub"}, "Real market data · virtual money · no broker connected. Choose a market to start."),
+    el("div", {class: "verdict bad"}, el("b", {}, "Read this first. "),
+      "This bot has never placed a real order. Every number here is virtual money moved by real prices. A strategy that looks good here can still lose real money."),
+    el("div", {class: "pick"}, d.markets.map(m => el("div", {class: "card"},
+      el("h2", {}, m.name, " ", el("span", {class: "tag " + (m.status === "HALTED" ? "bad" : m.started ? "good" : "")}, m.started ? m.status : "not started")),
+      el("div", {class: "sub", style: "margin:0"}, `${m.exchange} · ${m.universe}`),
+      el("div", {class: "row"}, el("span", {}, "Market hours"), el("span", {}, m.hours)),
+      el("div", {class: "row"}, el("span", {}, "Total value"), el("span", {}, m.started ? money(m.total, m.currency) : "–")),
+      el("div", {class: "row"}, el("span", {}, "Profit so far"), el("span", {class: tone(m.profit)}, m.started ? `${signed(m.profit, m.currency)} (${pct(m.profit_pct)})` : "–")),
+      el("div", {class: "row"}, el("span", {}, "Shares held"), el("span", {}, m.started ? String(m.positions) : "–")),
+      el("div", {class: "row"}, el("span", {}, "Last session"), el("span", {}, m.last_session || "–")),
+      m.regime ? el("div", {class: "sub", style: "margin:6px 0 0"}, m.regime) : null,
+      el("button", {class: "primary", onclick: () => { location.hash = m.market; }}, `Open ${m.name}`)))));
+}
+
+// ---------------------------------------------------------------- market view
+async function load(live = true) {
+  if (!market) return;
+  const want = market;
+  let m;
+  try { m = await (await fetch(`/api/market/${want}?live=${live}`)).json(); }
+  catch (e) { toast("Cannot reach the bot. Is the website window still open?"); return; }
+  if (want !== market) return;            // the user switched market while loading
+  const justFinished = wasRunning && !m.run.running; wasRunning = m.run.running;
+  render(m, justFinished);
+  if (justFinished) toast(m.run.error ? "Bot run failed. See the message at the top." : (m.run.summary || `${m.name} bot run finished.`));
+  clearInterval(timer);
+  timer = setInterval(() => load(!m.run.running), m.run.running ? 4000 : 30000);
+}
+
+function render(m, justFinished) {
+  const app = document.getElementById("app"), c = m.currency;
+  if (!m.started) {
+    app.replaceChildren(el("div", {}, header(m), el("div", {class: "finding info"}, el("b", {}, "Not started. "),
+      `Press Run to open the ${m.name} practice account. Opening the page starts nothing by itself.`), runBox(m, justFinished)));
+    return;
+  }
+  const p = m.performance, bt = m.backtest;
+  const amount = el("input", {type: "number", min: "0", step: "1000", placeholder: `Amount in ${c}`, "aria-label": `Amount in ${c}`});
+  const cash = async (sign) => {
+    const a = Number(amount.value);
+    if (!a || a <= 0) return toast("Enter an amount first.");
+    if (sign < 0 && !confirm(`Withdraw ${money(a, c)} of virtual money?`)) return;
+    try { toast((await post(`/api/market/${market}/cash`, {amount: sign * a})).message); load(); } catch (e) { toast(e.message); }
+  };
+  const sell = async (sym) => {
+    if (!confirm(`Sell ${sym} now at the latest price? This is a virtual sale.`)) return;
+    try { toast((await post(`/api/market/${market}/sell/${encodeURIComponent(sym)}`)).message); load(); } catch (e) { toast(e.message); }
+  };
+
+  app.replaceChildren(el("div", {},
+    header(m),
+    el("div", {class: "verdict bad"}, el("b", {}, "Read this first. "),
+      "Virtual money, real prices, no broker. ",
+      bt ? (bt.passed ? "The current strategy passed its 10-year test, but past results do not promise future ones."
+                      : "The current strategy failed its 10-year test, so this run checks the machine, not a proven strategy.") : ""),
+    runBox(m, justFinished),
+    m.status === "HALTED" ? el("div", {class: "verdict bad"}, el("b", {}, "Halted. "), m.halt_reason + " ",
+      el("button", {onclick: async () => { toast((await post(`/api/market/${market}/reset-halt`)).message); load(); }}, "Reset halt after review")) : null,
+
+    liveCard(m),
+
+    el("h2", {}, "Live account"),
+    el("div", {class: "grid"},
+      kpi("Total value", money(m.total, c), "", `Money put in ${money(m.capital_in, c)}`),
+      kpi("Profit so far", signed(m.profit, c), tone(m.profit), `${pct(m.profit_pct)} since ${m.start_date}`),
+      kpi("Free cash", money(m.cash, c), "", "Ready for new buys"),
+      kpi("Money in shares", money(m.in_market, c), "", `${m.positions.length} of 5 positions, live prices`),
+      kpi("Open profit", signed(m.open_profit, c), tone(m.open_profit), "On shares held right now"),
+      kpi("Last session", pct(m.day_return), tone(m.day_return), "Daily loss limit is 1.00%"),
+      kpi("Drawdown", pct(m.drawdown), m.drawdown <= -0.03 ? "neg" : "", "Limit is 5.00%, then full stop")),
+    el("div", {class: "finding info"}, el("b", {}, "Next update. "), m.next_update,
+      m.auto.on ? ` Auto mode is ON: the bot checks every 5 minutes and buys, sells and sets stops by itself when a session finishes${m.auto.last ? " (last auto run " + m.auto.last + ")" : ""}. Keep this window open.`
+                : " Auto mode is off: press Run bot now."),
+    m.why_no_buys ? el("div", {class: "finding"}, el("b", {}, "Why no buys. "), m.why_no_buys) : null,
+    el("div", {class: "card bar"}, el("span", {class: "label", style: "margin:0"}, "Virtual money"), amount,
+      el("button", {onclick: () => cash(1)}, "Add"), el("button", {onclick: () => cash(-1)}, "Withdraw")),
+
+    m.watch && m.watch.length ? el("div", {},
+      el("h2", {}, el("span", {class: "live"}), "Watching now: " + m.watch.map(w => w.symbol).join(" and ") + " only"),
+      el("div", {class: "finding info"}, el("b", {}, "Focus mode. "), "All other stocks are hidden for now. The bot only looks at these shares and uses the virtual money above."),
+      table([
+        {label: "Symbol", get: r => el("b", {}, r.symbol)},
+        {label: "Live price", n: 1, get: r => num(r.price)},
+        {label: "Today", n: 1, tone: r => r.change, get: r => pct(r.change)},
+        {label: "Price time", mono: 1, get: r => r.time},
+        {label: "Qty", n: 1, get: r => r.qty ? num(r.qty, 0) : "–"},
+        {label: "Stop", n: 1, get: r => r.stop ? num(r.stop) : "–"},
+        {label: "Target", n: 1, get: r => r.target ? num(r.target) : "–"},
+        {label: "What the bot is doing", get: r => r.what}], m.watch)) : null,
+
+    el("h2", {}, el("span", {class: "live"}), "Shares held now"),
+    table([
+      {label: "Symbol", get: r => el("b", {}, r.symbol)},
+      {label: "Qty", n: 1, get: r => num(r.qty, 0)},
+      {label: "Bought on", mono: 1, get: r => r.buy_date},
+      {label: "Buy price", n: 1, get: r => num(r.buy_price)},
+      {label: "Price now", n: 1, get: r => num(r.price)},
+      {label: "At", mono: 1, get: r => r.price_time},
+      {label: "Value", n: 1, get: r => money(r.value, c)},
+      {label: "P&L", n: 1, get: r => signed(r.pnl, c, 2), tone: r => r.pnl},
+      {label: "P&L %", n: 1, get: r => pct(r.pnl_pct), tone: r => r.pnl},
+      {label: "R now", n: 1, get: r => rfmt(r.r_now), tone: r => r.r_now},
+      {label: "Stop", n: 1, get: r => num(r.stop)},
+      {label: "Target", n: 1, get: r => r.target ? num(r.target) : "–"},
+      {label: "", get: r => el("button", {class: "danger", onclick: () => sell(r.symbol)}, "Sell now")},
+    ], m.positions, r => "Why it was bought: " + r.reason),
+
+    el("h3", {}, "Buy orders waiting"),
+    el("div", {class: "finding info"}, el("b", {}, "Live buying. "),
+      "While the market is open the bot buys these at the live price by itself (it checks every minute). ",
+      el("button", {onclick: async () => { try { toast((await post(`/api/market/${market}/buy-now`)).message); } catch (e) { toast(String(e.message || e)); } load(); }}, "Buy now")),
+    table([
+      {label: "Side", get: r => el("span", {class: "tag " + (r.side === "BUY" ? "good" : "bad")}, r.side)},
+      {label: "Symbol", get: r => el("b", {}, r.symbol)},
+      {label: "Qty", n: 1, get: r => num(r.qty, 0)},
+      {label: "Approx. price", n: 1, get: r => r.est_price ? num(r.est_price) : "–"},
+      {label: "Stop", n: 1, get: r => r.stop ? num(r.stop) : "–"},
+    ], m.orders, r => "Why: " + r.reason),
+
+    el("h2", {}, `Results of this simulation — ${c}`),
+    el("div", {class: "grid"},
+      kpi("Net P&L (closed)", signed(p.net_pnl, c), tone(p.net_pnl), `${pct(p.net_pnl / m.capital_in)} on ${money(m.capital_in, c)} virtual capital`),
+      kpi("Trades", String(p.trades), "", p.sample_note),
+      kpi("Win rate", p.win_rate === null ? "–" : (p.win_rate * 100).toFixed(1) + "%", "", `${p.wins}W / ${p.losses}L`),
+      kpi("Profit factor", p.profit_factor === null ? "–" : num(p.profit_factor), p.profit_factor === null ? "" : p.profit_factor >= 1.3 ? "pos" : "neg", "Gross profit / gross loss. Needs over 1.3"),
+      kpi("Max drawdown", pct(p.max_drawdown), p.max_drawdown <= -0.05 ? "neg" : "", "Limit is 5.00%"),
+      kpi("Expectancy", rfmt(p.expectancy), tone(p.expectancy), "Average R per trade"),
+      kpi("Costs paid", money(p.costs, c), "", `${pct(p.costs_pct)} of capital`)),
+    chart(m.equity_curve, m.capital_in, c),
+    el("h3", {}, "Every trade"),
+    table([
+      {label: "Exit date", mono: 1, get: r => r.exit_date},
+      {label: "Symbol", get: r => el("b", {}, r.symbol)},
+      {label: "Qty", n: 1, get: r => num(r.qty, 0)},
+      {label: "Entry", n: 1, get: r => num(r.entry_price)},
+      {label: "Exit", n: 1, get: r => num(r.exit_price)},
+      {label: "P&L", n: 1, get: r => signed(r.pnl, c), tone: r => r.pnl},
+      {label: "R", n: 1, get: r => rfmt(r.r_multiple), tone: r => r.r_multiple},
+      {label: "Reason", get: r => exitTag(r.exit_reason)},
+    ], m.trades),
+    el("h3", {}, "Why the bot said no"),
+    m.said_no.length ? el("div", {class: "card flush"}, el("table", {},
+      el("thead", {}, el("tr", {}, el("th", {}, "Rule that blocked the buy"), el("th", {class: "n"}, "Times"))),
+      el("tbody", {}, m.said_no.map(r => el("tr", {}, el("td", {style: "white-space:normal"}, el("code", {}, r.reason)), el("td", {class: "n"}, num(r.times, 0)))))))
+      : el("div", {class: "card flush"}, el("div", {class: "empty"}, "Nothing refused yet.")),
+
+    bt ? backtestBox(bt, c) : null,
+
+    el("h2", {}, "What the numbers actually mean"),
+    m.findings.map(f => el("div", {class: "finding " + f.tone}, el("b", {}, f.title + " "), f.text)),
+
+    el("h2", {}, "What is enforced, and where it stands now"),
+    el("div", {class: "card flush"}, el("table", {},
+      el("thead", {}, el("tr", {}, el("th", {}, "Rule"), el("th", {}, "Limit"), el("th", {}, "Now"), el("th", {}, "Status"))),
+      el("tbody", {}, m.rules.map(r => el("tr", {}, el("td", {}, r.rule), el("td", {}, r.limit), el("td", {style: "white-space:normal"}, r.now),
+        el("td", {}, el("span", {class: "tag " + (r.ok ? "good" : "bad")}, r.ok ? "OK" : "Blocking"))))))),
+
+    el("details", {}, el("summary", {}, "Activity log (latest 40)"),
+      table([{label: "Date", mono: 1, get: r => r.date}, {label: "Type", get: r => r.kind},
+             {label: "Symbol", get: r => r.symbol || ""}, {label: "Details", get: r => el("span", {style: "white-space:normal"}, r.message)}], m.events)),
+    el("p", {class: "sub", style: "margin-top:28px"}, "Prices are free market data and can be delayed up to 15 minutes. Buttons never touch a real broker.")));
+}
+
+function header(m) {
+  const idx = m.index && m.index.price ? `${m.index.symbol} ${num(m.index.price, 0)} at ${m.index.time}` : "";
+  return el("div", {}, el("div", {class: "top"},
+    el("div", {}, el("h1", {}, `Paper Trading Bot — ${m.name}`),
+      el("div", {class: "sub"}, el("span", {class: "live"}), `Real market data · virtual money · ${m.exchange}`,
+        m.last_session ? ` · last session ${m.last_session}` : "", idx ? ` · ${idx}` : "",
+        ` · updated ${new Date().toLocaleTimeString()}`)),
+    el("div", {class: "bar"},
+      el("button", {class: "primary", disabled: m.run.running, onclick: async () => {
+        try { toast((await post(`/api/market/${market}/run`)).message); wasRunning = true; load(false); } catch (e) { toast(e.message); } }},
+        m.run.running ? "Running…" : "Run bot now"),
+      el("button", {class: m.stop ? "danger" : "", onclick: async () => {
+        if (!m.stop && !confirm(`Stop new buys in ${m.name}? Shares held keep their stops.`)) return;
+        try { toast((await post(`/api/market/${market}/stop`, {on: !m.stop})).message); load(false); } catch (e) { toast(e.message); } }},
+        m.stop ? "Allow new buys" : "Stop new buys"),
+      el("button", {onclick: () => load(true)}, "Refresh prices"),
+      el("button", {onclick: () => { remember(null); location.hash = ""; }}, "Switch market"))));
+}
+
+function runBox(m, justFinished) {
+  const r = m.run, out = [];
+  if (r.running) out.push(el("div", {class: "finding info"}, el("b", {}, "Running. "), `Started ${r.started}. It analyses only ${m.name}.`));
+  if (r.error) out.push(el("div", {class: "finding bad"}, el("b", {}, "Last run failed. "), r.error));
+  if (r.summary && !r.running) out.push(el("div", {class: "finding " + (/processed/.test(r.summary) ? "good" : "info")},
+    el("b", {}, `Last run at ${r.finished}. `), r.summary));
+  if (r.output) out.push(el("details", {open: justFinished}, el("summary", {}, `Last bot run finished ${r.finished}`),
+    el("div", {class: "card"}, el("pre", {}, r.output))));
+  return el("div", {}, out);
+}
+
+function backtestBox(bt, c) {
+  const s = bt.stats || {};
+  const years = s.start && s.end ? `${s.start.slice(0, 4)} to ${s.end.slice(0, 4)}` : "";
+  return el("div", {}, el("h2", {}, `Long test of the current strategy ${years ? "(" + years + ")" : ""}`),
+    el("div", {class: "verdict " + (bt.passed ? "good" : "bad")}, el("b", {}, bt.passed ? "Passed. " : "Failed. "),
+      `${s.start} to ${s.end}, real past prices, virtual money, real costs, next-day fills.`),
+    el("div", {class: "grid"},
+      kpi("Total return", pct(s.total_return, 1), tone(s.total_return), `Yearly ${pct(s.cagr, 1)}`),
+      kpi("Max drawdown", pct(s.max_drawdown, 1), s.max_drawdown > -0.10 ? "" : "neg", "Must stay under 10%"),
+      kpi("Profit factor", num(s.profit_factor), s.profit_factor > 1.3 ? "pos" : "neg", "Must be over 1.3"),
+      kpi("Trades", String(s.trades ?? "–"), "", `Win rate ${s.win_rate === null || s.win_rate === undefined ? "–" : (s.win_rate * 100).toFixed(1) + "%"}`),
+      kpi("Expectancy", rfmt(s.avg_r), tone(s.avg_r), "Average R per trade"),
+      kpi("Index buy & hold", bt.benchmark === null || bt.benchmark === undefined ? "–" : pct(bt.benchmark, 1), "", "Same years, for comparison")),
+    el("div", {class: "card"}, (bt.checks || []).map(ch => el("div", {class: ch.ok ? "pos" : "neg"}, (ch.ok ? "PASS  " : "FAIL  ") + ch.text)),
+      el("div", {class: "sub", style: "margin:8px 0 0"}, `Report folder: runs/backtest/${bt.folder}`)));
+}
+
+function route() {
+  const h = location.hash.replace("#", "");
+  if (h === "india" || h === "us") {
+    market = h; remember(h); wasRunning = false; clearInterval(timer);
+    document.getElementById("app").replaceChildren(el("p", {class: "sub"}, "Loading live data…"));
+    load(true);
+  } else showStart();
+}
+window.addEventListener("hashchange", route);
+if (!location.hash) { const saved = recall(); if (saved) location.hash = saved; else route(); } else route();
+</script>
+</body>
+</html>

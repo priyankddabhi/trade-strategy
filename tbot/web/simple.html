@@ -1,0 +1,458 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Semi Final Bot</title>
+<style>
+/* One calm column. Fixed-size zones so nothing jumps when you press Run. */
+:root{
+  --bg:#0d1117; --card:#161b22; --line:#30363d; --line2:#21262d; --fg:#e6edf3; --muted:#8b949e;
+  --pos:#3fb950; --neg:#f85149; --warn:#d29922; --accent:#58a6ff; --accentbg:#12233a;
+  --posbg:#12261e; --negbg:#2d1214; --warnbg:#272115;
+  color-scheme: dark;
+}
+*{box-sizing:border-box}
+html,body{margin:0}
+body{background:var(--bg);color:var(--fg);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;
+  font-size:15px;line-height:1.45;-webkit-text-size-adjust:100%}
+.wrap{max-width:760px;margin:0 auto;padding:0 16px 120px}
+button{font:inherit;color:inherit;cursor:pointer}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+
+/* ---- top bar: always the same size, always in the same place */
+.bar{position:sticky;top:0;z-index:10;background:var(--bg);border-bottom:1px solid var(--line2);
+  padding:12px 0;display:grid;grid-template-columns:1fr auto auto;gap:12px;align-items:center}
+.brand{font-weight:700;font-size:17px;white-space:nowrap}
+.seg{display:flex;background:var(--card);border:1px solid var(--line);border-radius:10px;padding:3px;gap:3px}
+.seg button{border:0;background:transparent;padding:8px 14px;border-radius:8px;color:var(--muted);font-weight:600;
+  min-width:104px;height:38px}
+.seg button[aria-pressed="true"]{background:var(--accentbg);color:var(--accent)}
+.go{width:132px;height:44px;border:0;border-radius:10px;background:#238636;color:#fff;font-weight:700;font-size:15px;
+  display:flex;align-items:center;justify-content:center;gap:8px}
+.go:hover:not(:disabled){background:#2ea043}
+.go:disabled{background:#2a3340;color:var(--muted);cursor:progress}
+.spin{width:14px;height:14px;border:2px solid #5b6572;border-top-color:#fff;border-radius:50%;animation:spin .8s linear infinite;display:none}
+.go:disabled .spin{display:block}
+@keyframes spin{to{transform:rotate(360deg)}}
+
+/* ---- status line */
+.status{height:44px;display:flex;align-items:center;gap:10px;color:var(--muted);font-size:13px;white-space:nowrap;overflow:hidden}
+.pill{display:inline-flex;align-items:center;gap:6px;padding:3px 10px;border-radius:99px;border:1px solid var(--line);font-weight:600;color:var(--fg)}
+.dot{width:8px;height:8px;border-radius:50%;background:var(--muted)}
+.pill.open .dot{background:var(--pos);animation:pulse 1.6s ease-in-out infinite}
+.pill.closed .dot{background:var(--neg)}
+@keyframes pulse{50%{opacity:.35}}
+
+/* ---- the 6 steps */
+.steps{display:grid;grid-template-columns:repeat(6,1fr);gap:6px;margin:4px 0 14px}
+.step{text-align:center;font-size:11.5px;color:var(--muted);min-width:0}
+.step i{display:flex;width:28px;height:28px;margin:0 auto 5px;border-radius:50%;border:2px solid var(--line);align-items:center;
+  justify-content:center;font-style:normal;font-weight:700;font-size:12px;background:var(--card);transition:all .25s}
+.step.done i{background:var(--posbg);border-color:var(--pos);color:var(--pos)}
+.step.active i{border-color:var(--accent);color:var(--accent);background:var(--accentbg);animation:ring 1.6s ease-in-out infinite}
+.step.active{color:var(--fg);font-weight:600}
+.step.fail i{border-color:var(--neg);color:var(--neg);background:var(--negbg);animation:none}
+.step.wait i{border-color:var(--warn);color:var(--warn);background:var(--warnbg)}
+@keyframes ring{0%,100%{box-shadow:0 0 0 0 rgba(88,166,255,.45)}50%{box-shadow:0 0 0 7px rgba(88,166,255,0)}}
+
+/* ---- the stage: fixed height so Run never moves anything */
+.card{background:var(--card);border:1px solid var(--line);border-radius:14px}
+.stage{height:300px;padding:18px 20px;position:relative;overflow:hidden;margin-bottom:14px}
+.big{font-size:22px;font-weight:700;line-height:1.25;margin:10px 0 6px}
+.sub{color:var(--muted);font-size:14px}
+.icon{width:54px;height:54px;border-radius:14px;display:flex;align-items:center;justify-content:center;background:var(--accentbg);color:var(--accent)}
+.icon.good{background:var(--posbg);color:var(--pos)}.icon.bad{background:var(--negbg);color:var(--neg)}.icon.warn{background:var(--warnbg);color:var(--warn)}
+.icon svg{width:28px;height:28px}
+.lockname{font-size:34px;font-weight:800;letter-spacing:.02em}
+.view{position:absolute;inset:18px 20px;display:none;flex-direction:column}
+.view.on{display:flex}
+
+/* scan view */
+.scanhead{display:flex;justify-content:space-between;align-items:baseline;gap:10px;margin-bottom:8px}
+.scanhead b{font-size:16px}
+.progress{height:6px;border-radius:99px;background:var(--line2);overflow:hidden;margin-bottom:12px}
+.progress span{display:block;height:100%;width:0;background:var(--accent);transition:width .12s linear}
+.chips{flex:1;display:flex;flex-wrap:wrap;gap:5px;align-content:flex-start;overflow:hidden}
+.chip{font-size:11px;padding:2px 7px;border-radius:6px;border:1px solid var(--line);color:var(--muted);transition:all .15s}
+.chip.now{background:var(--accentbg);border-color:var(--accent);color:var(--accent);transform:scale(1.12)}
+.chip.seen{opacity:.7}
+.chips.dense{gap:3px}.chips.dense .chip{font-size:9.5px;padding:0 4px;border-radius:4px;border-width:1px}
+.chip.locked{opacity:1;background:var(--posbg);border-color:var(--pos);color:var(--pos);font-weight:800;transform:scale(1.25)}
+.chips.finishing .chip{animation:blink 1s ease-in-out infinite}
+@keyframes blink{50%{opacity:.25}}
+
+/* ---- money: four tiles, same size always */
+.money{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:14px}
+.tile{padding:14px 14px 12px;min-width:0;height:112px}
+.tile .label{font-size:11px;text-transform:uppercase;letter-spacing:.07em;color:var(--muted);margin-bottom:6px}
+.tile .value{font-size:23px;font-weight:700;line-height:1.15;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.tile .note{font-size:12px;color:var(--muted);margin-top:6px;line-height:1.3;max-height:32px;overflow:hidden}
+.pos{color:var(--pos)}.neg{color:var(--neg)}.warn{color:var(--warn)}
+
+/* ---- graph */
+.chartcard{padding:16px 16px 12px;height:330px}
+.charthead{display:flex;justify-content:space-between;align-items:baseline;gap:8px;margin-bottom:6px;height:24px}
+.charthead b{font-size:15px}
+.chartbox{height:240px}
+.chartbox svg{width:100%;height:100%;display:block}
+.legend{display:flex;gap:14px;flex-wrap:wrap;font-size:12px;color:var(--muted);height:20px;margin-top:4px;overflow:hidden}
+.legend span::before{content:"";display:inline-block;width:14px;height:0;border-top:2px dashed currentColor;margin-right:5px;vertical-align:middle}
+.legend .b{color:var(--accent)}.legend .s{color:var(--neg)}.legend .t{color:var(--pos)}
+
+/* ---- budget change: small, at the bottom */
+.budget{margin-top:16px;display:flex;gap:8px;align-items:center;flex-wrap:wrap;color:var(--muted);font-size:13px}
+.budget input{width:130px;height:38px;background:var(--bg);border:1px solid var(--line);border-radius:8px;color:var(--fg);padding:0 10px;font:inherit}
+.budget button{height:38px;padding:0 14px;background:var(--card);border:1px solid var(--line);border-radius:8px}
+.budget button:hover{border-color:var(--accent)}
+.foot{margin-top:18px;color:var(--muted);font-size:12.5px}
+.badge{font-size:11px;font-weight:600;color:var(--pos);border:1px solid var(--pos);border-radius:99px;padding:2px 9px;margin-left:8px;vertical-align:middle}
+.control{display:flex;flex-wrap:wrap;gap:10px;align-items:center;padding:14px 16px;margin:12px 0 4px}
+.control .label{font-size:11px;text-transform:uppercase;letter-spacing:.07em;color:var(--muted)}
+.control input{width:160px;height:42px;background:var(--bg);border:1px solid var(--line);border-radius:8px;color:var(--fg);padding:0 12px;font:inherit;font-size:17px;font-weight:700}
+.control button{height:42px;padding:0 16px;background:var(--accentbg);color:var(--accent);border:1px solid var(--accent);border-radius:8px;font-weight:700}
+.mkt{padding:14px 16px;margin:10px 0 6px}
+.mkt .label{font-size:11px;text-transform:uppercase;letter-spacing:.07em;color:var(--muted)}
+.mktrow{display:flex;flex-wrap:wrap;gap:26px;align-items:center;margin-top:6px}
+.mnum{font-size:28px;font-weight:800;line-height:1.1}.chg{font-size:13px;font-weight:600}
+.mspark{flex:1;min-width:220px;height:70px}.mspark svg{width:100%;height:70px;display:block}
+.mshares{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(170px,100%),1fr));gap:10px;margin-top:12px}
+.mshare{background:var(--bg);border:1px solid var(--line2);border-radius:10px;padding:10px 12px}
+.mshare b{font-size:14px}.mshare .p{font-size:19px;font-weight:700}
+.toast{position:fixed;left:50%;bottom:22px;transform:translateX(-50%);background:#1c2128;border:1px solid var(--line);border-radius:10px;
+  padding:10px 16px;font-size:14px;max-width:min(92vw,520px);opacity:0;pointer-events:none;transition:opacity .2s;z-index:20}
+.toast.on{opacity:1}
+
+@media (max-width:620px){
+  .bar{grid-template-columns:1fr 1fr;row-gap:10px}
+  .brand{grid-column:1;}
+  .go{grid-column:2;justify-self:end}
+  .seg{grid-column:1 / -1}
+  .seg button{flex:1;min-width:0}
+  .money{grid-template-columns:repeat(2,1fr)}
+  .step{font-size:10.5px}
+  #clock{display:none}
+  .stage{height:330px}
+  .chartcard{height:320px}
+}
+@media (prefers-reduced-motion:reduce){
+  *{animation:none!important;transition:none!important}
+}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header class="bar">
+    <div class="brand">Semi Final Bot <span class="badge">PRACTICE ONLY: no broker, no real orders</span></div>
+    <div class="seg" role="group" aria-label="Choose market">
+      <button id="b-us" aria-pressed="true">US stocks</button>
+      <button id="b-india" aria-pressed="false">India stocks</button>
+    </div>
+    <button class="go" id="go"><span class="spin"></span><span id="golabel">Run bot</span></button>
+  </header>
+
+  <section class="card control">
+    <label for="money" class="label">Money to trade with</label>
+    <input id="money" type="number" min="0" step="any">
+    <button id="setmoney">Set money</button>
+    <span class="sub" id="moneynote">Type the amount, press Set money, then Run bot.</span>
+  </section>
+
+  <section class="card mkt" id="mkt">
+    <div class="label"><span id="mktname">Live market</span> <span class="sub" id="mkttime"></span></div>
+    <div class="mktrow">
+      <div><div class="sub" id="ilabel">Index</div><div class="mnum" id="ival">–</div><div class="chg" id="ichg"></div></div>
+      <div><div class="sub" id="flabel">Fear gauge</div><div class="mnum" id="fval">–</div><div class="chg sub">volatility</div></div>
+      <div class="mspark" id="ispark"></div>
+    </div>
+    <div class="mshares" id="mshares"></div>
+  </section>
+
+  <div class="status">
+    <span class="pill closed" id="openpill"><span class="dot"></span><span id="opentext">Loading</span></span>
+    <span id="clock"></span>
+    <span id="limit">One share at a time</span>
+  </div>
+
+  <div class="steps" id="steps"></div>
+
+  <section class="card stage" aria-live="polite">
+    <div class="view on" id="v-idle">
+      <div class="icon" id="idleicon"></div>
+      <div class="big" id="headline">Loading…</div>
+      <div class="sub" id="subline"></div>
+    </div>
+    <div class="view" id="v-scan">
+      <div class="scanhead"><b id="scantitle">Searching the market</b><span class="sub" id="scancount"></span></div>
+      <div class="progress"><span id="bar"></span></div>
+      <div class="chips" id="chips"></div>
+    </div>
+  </section>
+
+  <section class="money">
+    <div class="card tile"><div class="label">Budget</div><div class="value" id="m-budget">–</div><div class="note" id="n-budget">Practice money</div></div>
+    <div class="card tile"><div class="label">Spent</div><div class="value" id="m-spent">–</div><div class="note" id="n-spent"></div></div>
+    <div class="card tile"><div class="label">Price now</div><div class="value" id="m-price">–</div><div class="note" id="n-price"></div></div>
+    <div class="card tile"><div class="label">Sold at</div><div class="value" id="m-sold">–</div><div class="note" id="n-sold"></div></div>
+  </section>
+
+  <section class="card chartcard">
+    <div class="charthead"><b id="ct">Price graph</b><span class="sub" id="cs"></span></div>
+    <div class="chartbox" id="chart"></div>
+    <div class="legend" id="legend"></div>
+  </section>
+
+  <div class="budget">
+    <span>Change budget</span>
+    <input id="amount" type="number" min="0" step="any" placeholder="Amount" aria-label="Amount">
+    <button id="add">Add</button><button id="take">Withdraw</button>
+  </div>
+  <div class="foot">Practice money on real prices. No broker is connected and no real order is ever placed.</div>
+</div>
+<div class="toast" id="toast" role="status"></div>
+
+<script>
+"use strict";
+const $ = id => document.getElementById(id);
+const STEPS = ["Check market", "Search shares", "Lock one share", "Buy", "Watch price", "Sell"];
+const NAMES = {us: "US", india: "India"};
+const ICONS = {
+  search: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="M20 20l-4-4"/></svg>',
+  lock: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="11" width="14" height="9" rx="2"/><path d="M8 11V8a4 4 0 018 0v3"/></svg>',
+  shield: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l7 3v6c0 4.5-3 7.5-7 9-4-1.500-7-4.500-7-9V6z"/></svg>',
+  eye: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12s4-7 10-7 10 7 10 7-4 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/></svg>',
+  pause: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M9 5v14M15 5v14"/></svg>',
+  clock: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>'
+};
+
+let market = pick();
+let data = null, busy = false, scanTimer = null;
+
+function pick() {
+  const h = location.hash.replace("#", "");
+  if (h === "us" || h === "india") return h;
+  try { const m = localStorage.getItem("simple.market"); if (m === "us" || m === "india") return m; } catch (e) {}
+  return "us";
+}
+const money = (v, cur, d = 0) => v === null || v === undefined ? "–" :
+  new Intl.NumberFormat(cur === "INR" ? "en-IN" : "en-US", {style: "currency", currency: cur || "USD", minimumFractionDigits: d, maximumFractionDigits: d}).format(v);
+const signed = (v, cur) => v === null || v === undefined ? "" : (v >= 0 ? "+" : "−") + money(Math.abs(v), cur, 2);
+const sleep = ms => new Promise(r => setTimeout(r, ms));
+function toast(msg) { const t = $("toast"); t.textContent = msg; t.classList.add("on"); clearTimeout(toast.t); toast.t = setTimeout(() => t.classList.remove("on"), 4200); }
+
+async function get(url) { const r = await fetch(url); if (!r.ok) throw new Error((await r.json().catch(() => ({}))).detail || r.statusText); return r.json(); }
+async function post(url, body) {
+  const r = await fetch(url, {method: "POST", headers: {"Content-Type": "application/json"}, body: JSON.stringify(body || {})});
+  const d = await r.json().catch(() => ({}));
+  if (!r.ok) throw new Error(d.detail || r.statusText);
+  return d;
+}
+
+/* ---------- steps (built once, then only classes change) */
+$("steps").append(...STEPS.map((s, i) => {
+  const d = document.createElement("div"); d.className = "step"; d.id = "s" + (i + 1);
+  d.innerHTML = `<i>${i + 1}</i><div>${s}</div>`; return d;
+}));
+function paintSteps(step, state) {
+  STEPS.forEach((_, i) => {
+    const n = i + 1, e = $("s" + n);
+    e.className = "step" + (n < step ? " done" : "") + (n === step ? " active" : "");
+    if (n === step && (state === "blocked" || state === "paused")) e.className = "step fail";
+    if (n === step && state === "nothing") e.className = "step wait";
+    e.firstChild.textContent = (n < step) ? "✓" : n;
+  });
+  if (state === "blocked" || state === "paused") $("s1").firstChild.textContent = "!";
+}
+
+/* ---------- stage text */
+function paintStage(d) {
+  const map = {new: ["search", ""], blocked: ["shield", "bad"], paused: ["pause", "warn"], nothing: ["search", "warn"], searching: ["search", ""],
+    waiting: ["lock", "good"], buying: ["lock", "good"], holding: ["eye", "good"]};
+  const [ic, cls] = map[d.state] || ["search", ""];
+  $("idleicon").className = "icon " + cls; $("idleicon").innerHTML = d.state === "waiting" && !d.open ? ICONS.lock : ICONS[ic];
+  const h = $("headline");
+  if (d.target && ["waiting", "buying", "holding"].includes(d.state)) {
+    const rest = d.headline.replace(/^(Locked on|Bought) \S+?\.\s*/, "");
+    h.innerHTML = `<span class="lockname">${d.target.symbol}</span><br><span style="font-size:17px;font-weight:600">${rest}</span>`;
+  } else h.textContent = d.headline;
+  const bits = [];
+  if (!d.open && ["waiting", "nothing", "searching"].includes(d.state)) bits.push(`Market hours: ${d.hours}.`);
+  if (d.state === "holding") bits.push("Nothing to do. The bot sells by itself at the safety price or the profit price on the graph.");
+  if (d.run && d.run.finished) bits.push(`Last checked at ${d.run.finished}.`);
+  if (d.run && d.run.error) bits.push("The last check had a problem. Press Run bot again.");
+  $("subline").textContent = bits.join(" ");
+}
+
+/* ---------- numbers */
+function paintMoney(d) {
+  const c = d.currency, t = d.target, s = d.sold;
+  $("m-budget").textContent = money(d.budget, c);
+  $("n-budget").textContent = d.cash !== undefined ? `${money(d.cash, c)} not spent` : "Practice money";
+  $("m-spent").textContent = money(d.spent || 0, c);
+  $("n-spent").textContent = t && t.buy_price ? `${t.qty} share × ${money(t.buy_price, c, 2)}` :
+    t && t.approx_cost ? `Plan: ${t.qty} share, about ${money(t.approx_cost, c)}` : "Nothing bought yet";
+  $("m-price").textContent = t && t.price ? money(t.price, c, 2) : (d.chart && d.chart.kind === "market" ? d.chart.price.toLocaleString("en-US", {maximumFractionDigits: 2}) : "–");
+  $("n-price").textContent = t ? `${t.symbol}${d.open ? ", live" : ", market closed, last price"}` : (d.chart ? `${d.chart.label} index, not a share` : "");
+  $("m-sold").textContent = s ? money(s.price, c, 2) : "–";
+  const n = $("n-sold");
+  n.className = "note" + (s ? (s.pnl >= 0 ? " pos" : " neg") : "");
+  n.textContent = s ? `${s.symbol}: ${signed(s.pnl, c)}. ${s.why}` : "Nothing sold yet";
+}
+
+/* ---------- the one graph */
+function paintChart(d) {
+  const c = d.chart, box = $("chart");
+  if (!c || !c.points || c.points.length < 2) { box.textContent = ""; $("ct").textContent = "Price graph"; $("cs").textContent = "Appears after the first run"; $("legend").textContent = ""; return; }
+  const W = Math.max(box.clientWidth, 280), H = Math.max(box.clientHeight, 200), L = 8, R = 62, T = 14, B = 14, p = c.points;
+  const marks = [["buy", c.buy, "var(--accent)", "Bought"], ["stop", c.stop, "var(--neg)", "Stop"], ["target", c.target, "var(--pos)", "Target"]].filter(m => m[1]);
+  const all = p.concat(marks.map(m => m[1]));
+  let lo = Math.min(...all), hi = Math.max(...all); const pad = (hi - lo) * 0.08 || 1; lo -= pad; hi += pad;
+  const x = i => L + i * (W - L - R) / (p.length - 1), y = v => T + (hi - v) * (H - T - B) / (hi - lo);
+  const line = p.map((v, i) => `${x(i).toFixed(1)},${y(v).toFixed(1)}`).join(" ");
+  const up = p[p.length - 1] >= p[0], col = up ? "var(--pos)" : "var(--neg)";
+  const fmt = v => v >= 1000 ? v.toFixed(0) : v.toFixed(2);
+  let svg = `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Price of ${c.label}">`;
+  for (let g = 0; g < 4; g++) { const gy = T + g * (H - T - B) / 3; svg += `<line x1="${L}" x2="${W - R}" y1="${gy}" y2="${gy}" stroke="var(--line2)"/>`; }
+  svg += `<polygon points="${L},${H - B} ${line} ${x(p.length - 1)},${H - B}" fill="${col}" opacity=".12"/>`;
+  svg += `<polyline points="${line}" fill="none" stroke="${col}" stroke-width="2.4" stroke-linejoin="round"/>`;
+  for (const [, v, mc, name] of marks) svg += `<line x1="${L}" x2="${W - R}" y1="${y(v)}" y2="${y(v)}" stroke="${mc}" stroke-width="1.6" stroke-dasharray="6 5"/><text x="${W - R + 6}" y="${y(v) + 4}" fill="${mc}" font-size="12" font-weight="600">${fmt(v)}</text>`;
+  const ex = x(p.length - 1), ey = y(p[p.length - 1]);
+  svg += `<circle cx="${ex}" cy="${ey}" r="9" fill="${col}" opacity=".25"><animate attributeName="r" values="5;11;5" dur="1.8s" repeatCount="indefinite"/></circle><circle cx="${ex}" cy="${ey}" r="4.5" fill="${col}"/>`;
+  svg += `<text x="${W - R + 6}" y="${ey + 4}" fill="var(--fg)" font-size="12.5" font-weight="700" ${marks.some(m => Math.abs(y(m[1]) - ey) < 13) ? 'dy="-14"' : ""}>${fmt(p[p.length - 1])}</text></svg>`;
+  box.innerHTML = svg;
+  $("ct").textContent = c.kind === "share" ? `${c.label}, last 60 days` : `${c.label}, the whole market (not a share)`;
+  $("cs").textContent = c.time || "";
+  $("legend").innerHTML = (c.buy ? '<span class="b">Bought at</span>' : "") + (c.stop ? '<span class="s">Sells here if price falls</span>' : "") + (c.target ? '<span class="t">Sells here to take profit</span>' : "");
+}
+
+/* ---------- live market card (Bot 2 style) */
+function spark(points, h) {
+  if (!points || points.length < 2) return "";
+  const W = 600, lo = Math.min(...points), hi = Math.max(...points), sp = (hi - lo) || 1;
+  const pts = points.map((v, i) => `${(i * W / (points.length - 1)).toFixed(1)},${(3 + (hi - v) * (h - 6) / sp).toFixed(1)}`).join(" ");
+  const col = points[points.length - 1] >= points[0] ? "var(--pos)" : "var(--neg)";
+  return `<svg viewBox="0 0 ${W} ${h}" preserveAspectRatio="none"><polygon points="0,${h} ${pts} ${W},${h}" fill="${col}" opacity=".13"/><polyline points="${pts}" fill="none" stroke="${col}" stroke-width="2" vector-effect="non-scaling-stroke"/></svg>`;
+}
+function paintMarket(d) {
+  const k = d.card;
+  if (!k || !k.index) { $("mkt").hidden = true; return; }
+  $("mkt").hidden = false;
+  const pc = v => v === null || v === undefined ? "" : (v >= 0 ? "+" : "−") + Math.abs(v * 100).toFixed(2) + "%";
+  $("mktname").textContent = `Live market · ${NAMES[d.market]}`; $("mkttime").textContent = k.index.time || "";
+  $("ilabel").textContent = k.index.label; $("ival").textContent = k.index.last.toLocaleString("en-US", {maximumFractionDigits: 1});
+  $("ichg").textContent = pc(k.index.change); $("ichg").className = "chg " + (k.index.change >= 0 ? "pos" : "neg");
+  $("flabel").textContent = k.fear ? k.fear.label : "Fear gauge"; $("fval").textContent = k.fear ? k.fear.last.toFixed(2) : "–";
+  $("fval").className = "mnum" + (k.fear && k.fear.last > 20 ? " warn" : "");
+  $("ispark").innerHTML = spark(k.index.trend, 70);
+  $("mshares").innerHTML = (k.stocks || []).map(s => `<div class="mshare"><b>${s.symbol}</b> <span class="chg ${s.change >= 0 ? "pos" : "neg"}">${pc(s.change)}</span><div class="p">${money(s.last, d.currency, 2)}</div>${spark(s.trend, 34)}</div>`).join("");
+}
+
+/* ---------- header status */
+function paintStatus(d) {
+  const pill = $("openpill"); pill.className = "pill " + (d.open ? "open" : "closed");
+  $("opentext").textContent = d.open ? `${NAMES[d.market]} market open` : `${NAMES[d.market]} market closed`;
+  $("clock").textContent = `${d.clock} local market time`;
+  $("limit").textContent = d.limit === 1 ? "One share at a time" : `Up to ${d.limit} shares at a time`;
+}
+
+function render(d) {
+  data = d;
+  paintStatus(d); paintMarket(d); paintSteps(d.step, d.state); paintStage(d); paintMoney(d); paintChart(d);
+  if (document.activeElement !== $("money")) $("money").value = Math.round(d.budget || 0);
+  $("b-us").setAttribute("aria-pressed", market === "us"); $("b-india").setAttribute("aria-pressed", market === "india");
+}
+
+async function load() {
+  try { const d = await get(`/api/simple/${market}`); if (!busy) render(d); return d; }
+  catch (e) { $("headline").textContent = "Cannot reach the bot. Is the black window still open?"; return null; }
+}
+
+/* ---------- the searching animation */
+function startScan(d) {
+  const names = d.universe && d.universe.length ? d.universe : [];
+  $("v-idle").classList.remove("on"); $("v-scan").classList.add("on");
+  $("scantitle").textContent = `Searching all ${names.length} ${NAMES[market]} shares`;
+  const chips = $("chips"); chips.className = "chips" + (names.length > 60 ? " dense" : ""); chips.replaceChildren(...names.map(n => { const s = document.createElement("span"); s.className = "chip"; s.textContent = n; return s; }));
+  $("bar").style.width = "0%"; $("scancount").textContent = "";
+  paintSteps(2, "searching");
+  const els = [...chips.children], per = Math.min(420, Math.max(35, 4200 / Math.max(els.length, 1)));
+  let i = 0; clearInterval(scanTimer);
+  scanTimer = setInterval(() => {
+    if (i > 0) { els[i - 1].classList.remove("now"); els[i - 1].classList.add("seen"); }
+    if (i >= els.length) { clearInterval(scanTimer); chips.classList.add("finishing"); $("scancount").textContent = "Checking safety rules…"; return; }
+    els[i].classList.add("now"); $("scancount").textContent = `${i + 1} of ${els.length}: ${names[i]}`;
+    $("bar").style.width = ((i + 1) / els.length * 100) + "%"; i++;
+  }, per);
+}
+async function stopScan(d) {
+  clearInterval(scanTimer);
+  const chips = $("chips"); chips.classList.remove("finishing");
+  [...chips.children].forEach(c => { c.classList.remove("now"); c.classList.add("seen"); });
+  $("bar").style.width = "100%";
+  const locked = d.target && [...chips.children].find(c => c.textContent === d.target.symbol);
+  if (locked) { locked.classList.remove("seen"); locked.classList.add("locked"); paintSteps(3, "locked"); $("scancount").textContent = `Locked on ${d.target.symbol}`; }
+  else $("scancount").textContent = d.state === "blocked" ? "Market is falling, nothing chosen" : "No share is strong enough";
+  await sleep(locked ? 1800 : 1400);
+  $("v-scan").classList.remove("on"); $("v-idle").classList.add("on");
+}
+
+/* ---------- Run */
+async function run() {
+  if (busy) return;
+  busy = true; $("go").disabled = true; $("golabel").textContent = "Running";
+  const m = market, t0 = Date.now();
+  try {
+    startScan(data || {universe: [], market: m});
+    try { await post(`/api/market/${m}/run`); } catch (e) { toast(String(e.message || e)); }
+    for (let i = 0; i < 400; i++) {
+      await sleep(1200);
+      const d = await get(`/api/simple/${m}`);
+      if (!d.run.running) break;
+    }
+    const wait = 4800 - (Date.now() - t0); if (wait > 0) await sleep(wait);
+    let msg = "";
+    try { msg = (await post(`/api/market/${m}/buy-now`)).message; } catch (e) { msg = ""; }
+    const d = await get(`/api/simple/${m}`);
+    if (m !== market) return;
+    await stopScan(d);
+    busy = false; render(d);
+    toast(d.headline + (msg && msg.startsWith("Bought") ? " " + msg : ""));
+  } catch (e) { toast("Something went wrong: " + (e.message || e)); clearInterval(scanTimer); $("v-scan").classList.remove("on"); $("v-idle").classList.add("on"); }
+  finally { busy = false; $("go").disabled = false; $("golabel").textContent = "Run bot"; }
+}
+
+/* ---------- switches and budget */
+function choose(m) {
+  if (busy || m === market) return;
+  market = m; try { localStorage.setItem("simple.market", m); } catch (e) {}
+  location.hash = m; data = null; boot();
+}
+async function cash(sign) {
+  const v = parseFloat($("amount").value);
+  if (!(v > 0)) { toast("Type an amount first."); return; }
+  try { const r = await post(`/api/market/${market}/cash`, {amount: sign * v}); $("amount").value = ""; toast(r.message); load(); }
+  catch (e) { toast(String(e.message || e)); }
+}
+async function boot() {
+  await load();                                         // the bot runs only when you press Run bot
+}
+$("go").addEventListener("click", run);
+$("b-us").addEventListener("click", () => choose("us"));
+$("b-india").addEventListener("click", () => choose("india"));
+$("setmoney").addEventListener("click", async () => {
+  const want = parseFloat($("money").value), have = data ? data.budget : 0;
+  if (!(want > 0)) { toast("Type an amount first."); return; }
+  if (!data || !data.started) { toast("Press Run bot first. It opens the account, then set the money."); return; }
+  const diff = want - have;
+  if (Math.abs(diff) < 0.01) { toast("Money is already " + money(want, data.currency)); return; }
+  try { const r = await post(`/api/market/${market}/cash`, {amount: diff}); toast(r.message); load(); } catch (e) { toast(String(e.message || e)); }
+});
+$("add").addEventListener("click", () => cash(1)); $("take").addEventListener("click", () => cash(-1));
+window.addEventListener("hashchange", () => { const m = pick(); if (m !== market && !busy) { market = m; boot(); } });
+setInterval(() => { if (!busy) load(); }, 15000);
+window.addEventListener("resize", () => { if (data) paintChart(data); });
+boot();
+</script>
+</body>
+</html>

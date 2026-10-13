@@ -1,0 +1,129 @@
+# India market settings. All money in INR.
+currency: INR
+timezone: Asia/Kolkata
+session: {open: "09:15", close: "15:30"}
+data_ready_after_minutes: 30      # a day's bar counts as final 30 minutes after the close (closing session included)
+
+capital: 400000                   # virtual starting money (about 5000 USD; was 1000000, restore to undo)
+
+regime:
+  index: "^NSEI"                  # Nifty 50
+  index_sma: 200
+  vix: "^INDIAVIX"
+  vix_max: 20
+  levels: true                    # market level sets the risk: good = full, normal = reduced, bad = no buys
+  confirm_days: 5                 # good: index above its 200-day average on all of the last 5 sessions
+  fast_sma: 50                    # good: index also above its 50-day average
+  calm_vix: 16                    # good: India VIX at or below this (limit is 20)
+  normal_risk_mult: 0.5           # normal market: half the risk per trade (0.25% instead of 0.5%)
+  normal_positions_mult: 0.6      # normal market: fewer shares at once (60% of the limit, at least 1)
+  scan:                           # how many of the best matching shares a run compares (search effort)
+    good: 20                      # rising market: look wide
+    normal: 10                    # normal market: the usual shortlist
+    bad: 3                        # falling market (extra-safe mode only): the 3 strongest, never more risk
+  bad_market:                     # index below its 200-day average. YOUR CHANGE (08 Oct 2026) to BOT_INSTRUCTIONS 3
+    allow: true                   # false = old rule: no buys at all in a bad market
+    risk_mult: 0.2                # tiny size: 0.1% risk per trade instead of 0.5%
+    max_positions: 1              # at most one share held at a time
+    beat_index_by: 0.10           # share must beat the index by 10 points over 3 months and be the day's top pick
+                                  # fear gauge above vix_max (panic) still blocks every buy
+
+universe:
+  suffix: ".NS"
+  min_price: 50                   # no penny stocks
+  min_avg_value: 50000000         # 5 crore traded per day (20-day average)
+  etfs: [NIFTYBEES, BANKBEES, JUNIORBEES]
+  # Nifty 50 + Nifty Next 50. Index members change, so check nseindia.com and edit.
+  # A symbol that yfinance cannot find is skipped with a warning.
+  symbols: [
+    ADANIENT, ADANIPORTS, APOLLOHOSP, ASIANPAINT, AXISBANK, BAJAJ-AUTO, BAJFINANCE,
+    BAJAJFINSV, BEL, BHARTIARTL, CIPLA, COALINDIA, DRREDDY, EICHERMOT, ETERNAL, GRASIM,
+    HCLTECH, HDFCBANK, HDFCLIFE, HINDALCO, HINDUNILVR, ICICIBANK, INDIGO, INFY, ITC,
+    JIOFIN, JSWSTEEL, KOTAKBANK, LT, M&M, MARUTI, MAXHEALTH, NESTLEIND, NTPC, ONGC,
+    POWERGRID, RELIANCE, SBILIFE, SBIN, SHRIRAMFIN, SUNPHARMA, TATACONSUM, TMPV,
+    TATASTEEL, TCS, TECHM, TITAN, TRENT, ULTRACEMCO, WIPRO,
+    ABB, ADANIENSOL, ADANIGREEN, ADANIPOWER, AMBUJACEM, BAJAJHLDNG, BANKBARODA, BOSCHLTD,
+    BPCL, BRITANNIA, CANBK, CGPOWER, CHOLAFIN, DABUR, DIVISLAB, DLF, DMART, GAIL,
+    GODREJCP, HAL, HAVELLS, HEROMOTOCO, HINDZINC, ICICIGI, ICICIPRULI, INDHOTEL,
+    INDUSINDBK, IOC, IRFC, JINDALSTEL, JSWENERGY, LICI, LODHA, LTM, MOTHERSON, NAUKRI,
+    PFC, PIDILITIND, PNB, RECLTD, SHREECEM, SIEMENS, TATAPOWER, TORNTPHARM, TVSMOTOR,
+    UNITDSPR, VBL, VEDL, ZYDUSLIFE
+  ]
+
+strategy:
+  name: trend_breakout
+  breakout_days: 20               # buy on a new 20-day high
+  trend_sma_fast: 50
+  trend_sma_slow: 200
+  volume_days: 20
+  volume_mult: 1.0                # volume above its 20-day average
+  atr_days: 14
+  stop_atr: 2.0                   # first stop 2 ATR below entry
+  trail_atr: 2.0                  # after breakeven, trail 2 ATR below highest close
+  exit_sma: 20                    # exit when close falls below the 20-day average
+  take_profit_r: 3.0              # take profit at 3R
+  rank_roc_days: 63               # when too many signals, prefer stronger 3-month momentum
+  history_check:                  # each chosen share is tested on its own past before a buy
+    enabled: true
+    days_after: 20                # result of a past buy signal 20 market days later
+    years: 3                      # look back 3 years on that share
+    min_signals: 3                # at least 3 past signals, up at least half the time, gain on average
+  predict:                        # held shares: expected band for the next days (tbot/predict.py)
+    enabled: true
+    days: 5                       # a fresh band every 5 sessions
+    band_atr: 1.0                 # under the band by more than 1 ATR = off track
+  use:                            # lab rules in use, best first (research/lab). false = off
+    nifty_mom30: true
+    bollinger: true
+    longboard: true
+    flipper: true
+    trendpilot: true
+    hundred_day_high: true
+    fear_pullback: true
+    new_yearly_high: true
+    clenow_momentum: true
+    relative_momentum: true
+    gem: true
+    golden_cross: true
+    trend200: true
+    absolute_momentum: true
+    dual_momentum: true
+    trend_breakout: true
+    sepa: false
+    clenow_tf: false
+    mean_reversion: false
+    turtle_s2: false
+    weekly_rotation: false
+
+risk:
+  risk_per_trade: 0.005           # 0.5% of equity
+  max_daily_loss: 0.01            # 1%: no new entries next session
+  max_weekly_loss: 0.02           # 2%: no new entries for the rest of the week
+  max_drawdown: 0.05              # 5%: full stop, manual reset only
+  max_position_pct: 0.10          # 10% of equity per stock
+  max_positions: 5                # up to 5 shares at a time (BOT_INSTRUCTIONS: max 5 positions per market)
+  per_strategy_max: 1             # each strategy holds at most 1 share, so every strategy gets a turn
+  max_new_per_day: 3
+  second_choice_mult: 0.5         # best-ranked buy of the day gets full size, later ones half
+  min_reward_risk: 2.0            # after costs
+  loss_streak: 4                  # 4 losing trades in a row ...
+  loss_streak_pause_days: 5       # ... pause new entries for 5 sessions
+  symbol_cooldown_days: 5         # no re-entry in the same stock for 5 sessions
+  max_gap_risk_mult: 1.5          # cancel entry if a gap up makes risk 1.5x the plan
+  fractional_shares: false
+  backtest_halt_resume_days: 20   # backtest only: resume 20 sessions after a halt
+
+costs:                            # equity delivery. Check your broker's charge sheet.
+  model: india_delivery
+  brokerage_pct: 0.0              # most discount brokers charge 0 for delivery
+  brokerage_max: 20.0
+  stt_pct: 0.001                  # 0.1% on buy and sell
+  exchange_pct: 0.0000297         # NSE transaction charge
+  sebi_pct: 0.000001              # 10 rupees per crore
+  stamp_pct: 0.00015              # buy side only
+  gst_pct: 0.18                   # on brokerage + exchange + SEBI fees
+  dp_charge: 15.93                # per stock, per sell
+  slippage_pct: 0.0005            # 0.05% worse price on every fill
+
+data:
+  max_daily_move: 0.20            # bigger one-day moves are flagged and not traded

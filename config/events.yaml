@@ -1,0 +1,21 @@
+# Event blackout days: pending BUY orders are cancelled if they would fill on these days.
+# Exits and stops still work. Set enabled: false to measure the strategy without blackouts.
+# Add dates from the official calendars. Format: YYYY-MM-DD.
+enabled: true
+
+india:
+  - 2026-02-01        # Union Budget
+  # RBI policy decision days: add from rbi.org.in
+  # Election result days: add when announced
+
+us:
+  # FOMC decision days 2026 (verify on federalreserve.gov)
+  - 2026-01-28
+  - 2026-03-18
+  - 2026-04-29
+  - 2026-06-17
+  - 2026-07-29
+  - 2026-09-16
+  - 2026-10-28
+  - 2026-12-09
+  # CPI release days: add from bls.gov

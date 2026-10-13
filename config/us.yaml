@@ -1,0 +1,121 @@
+# US market settings. All money in USD.
+currency: USD
+timezone: America/New_York
+session: {open: "09:30", close: "16:00"}
+data_ready_after_minutes: 30      # a day's bar counts as final 30 minutes after the close (closing session included)
+
+capital: 5000                    # virtual starting money
+
+regime:
+  index: "^GSPC"                  # S&P 500
+  index_sma: 200
+  vix: "^VIX"
+  vix_max: 25
+  levels: true                    # market level sets the risk: good = full, normal = reduced, bad = no buys
+  confirm_days: 5                 # good: index above its 200-day average on all of the last 5 sessions
+  fast_sma: 50                    # good: index also above its 50-day average
+  calm_vix: 20                    # good: fear gauge at or below this
+  normal_risk_mult: 0.5           # normal market: half the risk per trade (0.25% instead of 0.5%)
+  normal_positions_mult: 0.6      # normal market: fewer shares at once (60% of the limit, at least 1)
+  scan:                           # how many of the best matching shares a run compares (search effort)
+    good: 20                      # rising market: look wide
+    normal: 10                    # normal market: the usual shortlist
+    bad: 3                        # falling market (extra-safe mode only): the 3 strongest, never more risk
+  bad_market:                     # index below its 200-day average. YOUR CHANGE (08 Oct 2026) to BOT_INSTRUCTIONS 3
+    allow: true                   # false = old rule: no buys at all in a bad market
+    risk_mult: 0.2                # tiny size: 0.1% risk per trade instead of 0.5%
+    max_positions: 1              # at most one share held at a time
+    beat_index_by: 0.10           # share must beat the index by 10 points over 3 months and be the day's top pick
+                                  # fear gauge above vix_max (panic) still blocks every buy
+
+universe:
+  suffix: ""
+  min_price: 5
+  min_avg_value: 20000000         # 20 million dollars traded per day (20-day average)
+  etfs: [SPY, QQQ]
+  # S&P 100. Index members change, so check and edit. Unknown symbols are skipped. BK trades as BNY now.
+  symbols: [
+    AAPL, ABBV, ABT, ACN, ADBE, AIG, AMD, AMGN, AMT, AMZN, AVGO, AXP, BA, BAC, BNY, BKNG,
+    BLK, BMY, BRK-B, C, CAT, CHTR, CL, CMCSA, COF, COP, COST, CRM, CSCO, CVS, CVX, DE,
+    DHR, DIS, DUK, EMR, F, FDX, GD, GE, GILD, GM, GOOGL, GS, HD, HON, IBM, INTC, INTU,
+    ISRG, JNJ, JPM, KO, LIN, LLY, LMT, LOW, MA, MCD, MDLZ, MDT, MET, META, MMM, MO, MRK,
+    MS, MSFT, NEE, NFLX, NKE, NOW, NVDA, ORCL, PEP, PFE, PG, PLTR, PM, PYPL, QCOM, RTX,
+    SBUX, SCHW, SO, SPG, T, TGT, TMO, TMUS, TSLA, TXN, UBER, UNH, UNP, UPS, USB, V, VZ,
+    WFC, WMT, XOM
+  ]
+
+strategy:
+  name: trend_breakout
+  breakout_days: 20
+  trend_sma_fast: 50
+  trend_sma_slow: 200
+  volume_days: 20
+  volume_mult: 1.0
+  atr_days: 14
+  stop_atr: 2.0
+  trail_atr: 2.0
+  exit_sma: 20
+  take_profit_r: 3.0
+  rank_roc_days: 63
+  history_check:                  # each chosen share is tested on its own past before a buy
+    enabled: true
+    days_after: 20                # result of a past buy signal 20 market days later
+    years: 3                      # look back 3 years on that share
+    min_signals: 3                # at least 3 past signals, up at least half the time, gain on average
+  predict:                        # held shares: expected band for the next days (tbot/predict.py)
+    enabled: true
+    days: 5                       # a fresh band every 5 sessions
+    band_atr: 1.0                 # under the band by more than 1 ATR = off track
+  use:                            # lab rules in use, best first (research/lab). false = off
+    bollinger: true
+    flipper: true
+    trendpilot: true
+    new_yearly_high: true
+    nifty_mom30: true
+    hundred_day_high: true
+    longboard: true
+    trend200: true
+    sepa: true
+    golden_cross: true
+    clenow_tf: true
+    mean_reversion: true
+    clenow_momentum: true
+    dual_momentum: true
+    absolute_momentum: true
+    relative_momentum: true
+    turtle_s2: true
+    gem: true
+    weekly_rotation: true
+    trend_breakout: true
+    fear_pullback: false
+
+risk:
+  risk_per_trade: 0.005
+  max_daily_loss: 0.01
+  max_weekly_loss: 0.02
+  max_drawdown: 0.05
+  max_position_pct: 0.10
+  max_positions: 5                # up to 5 shares at a time (BOT_INSTRUCTIONS: max 5 positions per market)
+  per_strategy_max: 1             # each strategy holds at most 1 share, so every strategy gets a turn
+  max_new_per_day: 3
+  second_choice_mult: 0.5         # best-ranked buy of the day gets full size, later ones half
+  min_reward_risk: 2.0
+  loss_streak: 4
+  loss_streak_pause_days: 5
+  symbol_cooldown_days: 5
+  max_gap_risk_mult: 1.5
+  fractional_shares: false
+  backtest_halt_resume_days: 20
+
+costs:                            # IBKR fixed pricing. Check current rates.
+  model: us_stocks
+  per_share: 0.005
+  min_per_order: 1.0
+  max_pct: 0.01                   # commission never above 1% of trade value
+  sec_fee_rate: 0.0000278         # sells only. The SEC changes this rate, check it.
+  finra_taf_per_share: 0.000166   # sells only
+  finra_taf_max: 8.30
+  slippage_pct: 0.0002
+
+data:
+  max_daily_move: 0.20

@@ -1,0 +1,21 @@
+# Never upload: secrets, price data, the practice account, run outputs, local tool files
+.env
+.venv/
+data/
+state/
+runs/
+research/books_lab/data/
+**/__pycache__/
+**/.pytest_cache/
+**/.serena/
+*.tmp
+STOP
+STOP_*
+
+# Third-party research code (Kronos, MIT). Cloned, not part of this project
+research/kronos/
+
+# Local only: tool caches, raw research rows, and the archive of unused files (kept on this PC, never pushed)
+.hypothesis/
+research/kronos_eval/rows_*.csv
+_archive/

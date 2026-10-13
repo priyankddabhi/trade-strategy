@@ -1,0 +1,1478 @@
+<!doctype html>
+<html lang="en" data-bs-theme="light">
+<script>try{var m=localStorage.getItem("sfb.theme");if(m==="light"||m==="dark")document.documentElement.setAttribute("data-theme",m)}catch(e){}</script>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="description" content="Practice trading bot: real prices, practice money, US and India.">
+<title>Semi Final Bot</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Crect width='16' height='16' rx='3' fill='%23111'/%3E%3Cpath d='M3 11l3-3 2 2 5-5' stroke='%23fff' stroke-width='1.6' fill='none'/%3E%3C/svg%3E">
+<link rel="stylesheet" href="/vendor/bootstrap.min.css">
+<script src="/vendor/chart.umd.min.js"></script>
+<script src="/vendor/anime.min.js"></script>
+<style>
+/* Style: "minimalist-ui" + "redesign" skills from added/4-cloned-repos/taste-skill.
+   Warm monochrome, one dark accent, pastel colours only for meaning, motion via transform/opacity only. */
+:root{
+  --canvas:#F7F6F3; --surface:#FFFFFF; --line:#EAEAEA; --line2:#F1F0EC;
+  --ink:#2F3437; --ink-strong:#111111; --muted:#787774;
+  --green:#346538; --green-bg:#EDF3EC; --red:#9F2F2D; --red-bg:#FDEBEC;
+  --yellow:#956400; --yellow-bg:#FBF3DB; --blue:#1F6C9F; --blue-bg:#E1F3FE; --amber:#B35F00; --profit:#1559B8; --loss:#C62828;
+  --cta-bg:#111111; --cta-fg:#FFFFFF; --cta-hover:#333333; --cta-busy:#555555;
+  --ease:cubic-bezier(0.16,1,0.3,1);
+  color-scheme:light;
+  --sans:"Segoe UI Variable Text","SF Pro Display","Helvetica Neue","Segoe UI",system-ui,sans-serif;
+  --serif:"Iowan Old Style","Palatino Linotype",Palatino,Georgia,serif;
+  --mono:"Cascadia Mono","SF Mono",Consolas,monospace;
+}
+/* dark theme: same warm monochrome, inverted; follows the system unless the menu says otherwise */
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --canvas:#151514; --surface:#1C1C1B; --line:#2E2E2B; --line2:#252523; --ink:#DEDCD6; --ink-strong:#F4F2EE; --muted:#9A9893;
+  --green:#86C095; --green-bg:#1D2A21; --red:#E8928F; --red-bg:#35211F; --yellow:#DDB765; --yellow-bg:#302816; --blue:#86BDE6; --blue-bg:#192733; --amber:#FFB400; --profit:#5AA9FF; --loss:#FF5C5C;
+  --cta-bg:#F4F2EE; --cta-fg:#111111; --cta-hover:#DCD9D2; --cta-busy:#8A8884; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --canvas:#151514; --surface:#1C1C1B; --line:#2E2E2B; --line2:#252523; --ink:#DEDCD6; --ink-strong:#F4F2EE; --muted:#9A9893;
+  --green:#86C095; --green-bg:#1D2A21; --red:#E8928F; --red-bg:#35211F; --yellow:#DDB765; --yellow-bg:#302816; --blue:#86BDE6; --blue-bg:#192733; --amber:#FFB400; --profit:#5AA9FF; --loss:#FF5C5C;
+  --cta-bg:#F4F2EE; --cta-fg:#111111; --cta-hover:#DCD9D2; --cta-busy:#8A8884; color-scheme:dark}
+html{scroll-behavior:smooth}
+body,.panel,.wallet,.seg,.moneybox,.share,.chip{transition:background-color .35s var(--ease),border-color .35s var(--ease),color .35s var(--ease)}
+.theme{width:34px;height:34px;display:inline-flex;align-items:center;justify-content:center;border:1px solid var(--line);background:var(--surface);color:var(--ink-strong);border-radius:8px;margin-left:6px;transition:transform .25s var(--ease),background-color .35s var(--ease)}
+.theme:hover{background:var(--line2)}.theme:active{transform:scale(.94)}.theme svg{transition:transform .5s var(--ease)}
+:root[data-theme="dark"] .theme svg{transform:rotate(180deg)}
+body{background:var(--canvas);color:var(--ink);font-family:var(--sans);line-height:1.6;-webkit-font-smoothing:antialiased}
+.wrap{max-width:1320px;margin:0 auto;padding:16px 20px 64px}
+h1,.serif{font-family:var(--serif);letter-spacing:-.025em;line-height:1.1;color:var(--ink-strong)}
+.num{font-variant-numeric:tabular-nums;font-feature-settings:"tnum"}
+.muted{color:var(--muted)}
+.lbl{font-size:13px;color:var(--muted);font-weight:500}
+.panel{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:22px 24px;transition:box-shadow .2s var(--ease)}
+.panel:hover{box-shadow:0 2px 8px rgba(0,0,0,.035)}
+.tag{display:inline-block;font-size:11px;font-weight:600;letter-spacing:.05em;text-transform:uppercase;border-radius:9999px;padding:2px 10px}
+.t-green{background:var(--green-bg);color:var(--green)}.t-red{background:var(--red-bg);color:var(--red)}
+.t-yellow{background:var(--yellow-bg);color:var(--yellow)}.t-blue{background:var(--blue-bg);color:var(--blue)}.t-grey{background:var(--line2);color:var(--muted)}
+.pos{color:var(--profit)!important}.neg{color:var(--loss)!important}.warn{color:var(--yellow)!important}
+:focus-visible{outline:2px solid var(--ink-strong);outline-offset:2px}
+
+/* header */
+.top{display:flex;flex-wrap:wrap;align-items:center;gap:12px 18px;margin-bottom:12px}
+.top h1{font-size:28px;margin:0}
+.brand{display:flex;align-items:center;gap:10px}
+.tools{margin-left:auto;display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.tools .moneybox input{width:105px;padding:6px 10px;font-size:15px}
+.tools .moneybox button{padding:6px 12px}
+.tools .go{height:38px;width:126px}
+.tools .stoprun{height:38px;padding:0 14px;color:var(--red);border-color:var(--red)}
+.tools .clock{margin-left:4px}
+.clock{margin-left:auto;font-family:var(--mono);font-size:13px;color:var(--muted)}
+
+/* control bar: fixed sizes so nothing moves */
+.control{display:grid;grid-template-columns:auto auto 1fr auto;gap:18px;align-items:center}
+.mlab{padding:0 0 0 12px;font-size:13px;color:var(--muted)}
+.seg{display:inline-flex;background:var(--line2);border-radius:8px;padding:3px;gap:2px}
+.seg button{border:0;background:transparent;color:var(--muted);font-weight:500;padding:7px 14px;border-radius:6px;transition:background .2s var(--ease),color .2s var(--ease)}
+.seg button.on{background:var(--surface);color:var(--ink-strong);box-shadow:0 1px 2px rgba(0,0,0,.06)}
+.moneybox{display:flex;align-items:center;border:1px solid var(--line);border-radius:8px;background:var(--surface);overflow:hidden}
+.moneybox input{border:0;outline:0;color-scheme:inherit;width:150px;padding:8px 12px;font-family:var(--mono);font-size:17px;font-weight:600;color:var(--ink-strong);background:transparent}
+.moneybox button{border:0;border-left:1px solid var(--line);background:var(--surface);padding:8px 14px;font-weight:500;color:var(--ink)}
+.moneybox button:hover{background:var(--line2)}
+.go{width:148px;height:44px;border:0;border-radius:6px;background:var(--cta-bg);color:var(--cta-fg);font-weight:600;letter-spacing:.01em;display:flex;align-items:center;justify-content:center;gap:10px;transition:background .2s var(--ease),transform .15s var(--ease)}
+.go:hover{background:var(--cta-hover)}.go:active{transform:scale(.98)}.go:disabled{background:var(--cta-busy);cursor:progress}
+.dots{display:none;gap:4px}.go:disabled .dots{display:inline-flex}
+.dots i{width:5px;height:5px;border-radius:50%;background:var(--cta-fg);opacity:.35;animation:dot 1.2s var(--ease) infinite}
+.dots i:nth-child(2){animation-delay:.15s}.dots i:nth-child(3){animation-delay:.3s}
+@keyframes dot{40%{opacity:1;transform:translateY(-2px)}}
+.status{font-size:14px;line-height:1.8}
+
+/* five stages: a connected stepper. Done steps fill the line, the working step pulses and the line flows. */
+.flow{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:12px 20px 14px}
+.flowhead{display:flex;justify-content:space-between;align-items:center;gap:6px 14px;flex-wrap:wrap;margin-bottom:12px}
+.steps{list-style:none;margin:0;padding:0;display:grid;grid-template-columns:repeat(4,minmax(0,1fr))}
+.pstep{position:relative;min-width:0}
+.step{position:relative;cursor:pointer;padding-right:16px;min-width:0;transition:opacity .4s var(--ease)}
+.step .rail{display:flex;align-items:center;margin-bottom:8px}
+.step .node{flex:none;position:relative;width:26px;height:26px;border-radius:50%;display:flex;align-items:center;justify-content:center;font:700 12px var(--mono);border:1.5px solid var(--line);background:var(--surface);color:var(--muted);transition:background .4s var(--ease),border-color .4s var(--ease),color .4s var(--ease)}
+.step .line{flex:1;height:2px;margin-left:10px;border-radius:2px;background:var(--line);position:relative;overflow:hidden}
+/* wires between steps (idea from wire.html): a bundle of waving lines, its colour says how far the run got */
+.step .line.wired{height:22px;margin-left:0;margin-right:-16px;background:none;border-radius:0;overflow:visible}
+.step .line canvas{position:absolute;inset:0;width:100%;height:100%}
+.step{--wire:var(--line);--wireglow:transparent}
+.step.done{--wire:var(--green);--wireglow:var(--green)}
+.step.running{--wire:var(--blue);--wireglow:var(--blue)}
+.step.attn{--wire:var(--yellow);--wireglow:var(--yellow)}
+.step.bad{--wire:var(--red);--wireglow:var(--red)}
+.step.loop{--wire:#FF8A00;--wireglow:#FFB400}
+.pstep:last-child .line{display:none}
+.step .nm{font-weight:600;font-size:13.5px;color:var(--ink-strong);line-height:1.25}
+.step:hover .nm{text-decoration:underline;text-underline-offset:3px}
+.step .tt{font-size:12.5px;color:var(--muted);line-height:1.35;margin-top:2px;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.step.idle{opacity:.5}
+.step.done .node{background:var(--green);border-color:var(--green);color:var(--surface)}
+.step.attn .node{background:var(--yellow-bg);border-color:var(--yellow);color:var(--yellow)}.step.attn .tt{color:var(--yellow)}
+.step.bad .node{background:var(--red-bg);border-color:var(--red);color:var(--red)}.step.bad .tt{color:var(--red)}
+.step.running .node{border-color:var(--blue-bg);color:var(--blue);animation:pulse 1.4s var(--ease) infinite}
+.step.running .node::after{content:"";position:absolute;inset:-1.5px;border-radius:50%;border:1.5px solid transparent;border-top-color:var(--blue);animation:spin .8s linear infinite}
+.step.running .nm{color:var(--blue)}
+.step.loop .nm{color:var(--amber)}
+/* a step the bot keeps doing by itself (live watch, live buy): a tiny reactor core (amber on void black), rings turning at different speeds for depth */
+.step.loop .node{z-index:2;background:#000;border-color:#993300;color:transparent;animation:none}
+.step.loop .node::after{display:none}
+.reactor{position:absolute;left:50%;top:50%;width:52px;height:52px;margin:-26px 0 0 -26px;pointer-events:none;perspective:170px;
+  filter:drop-shadow(0 0 1.5px rgba(255,180,0,.6))}
+.reactor svg{position:absolute;inset:0;width:100%;height:100%;overflow:visible}
+.rx-field{animation:spin 140s linear infinite}
+.rx-out{animation:spin 24s linear infinite}
+.rx-gyro{animation:gyro 7s linear infinite}
+.rx-tilt{animation:spin 16s linear infinite}
+.rx-tilt .energy{animation:energy 2s linear infinite}
+.rx-in{animation:spin 9s linear infinite reverse}
+.rx-in .shut{animation:shutter 2s ease-in-out infinite}.rx-in .shut:nth-of-type(2){animation-delay:-.7s}.rx-in .shut:nth-of-type(3){animation-delay:-1.4s}
+.rx-core{animation:nucleus 4s cubic-bezier(.42,0,.58,1) infinite alternate}
+.rx-core .bead{animation:bead 1.4s ease-in-out infinite}
+.step.loop.kick .reactor{animation:rxkick 2.2s var(--ease)}       /* the bot loop just woke and checked */
+@keyframes rxkick{0%{transform:scale(1);filter:drop-shadow(0 0 1.5px rgba(255,180,0,.6))}
+  20%{transform:scale(1.3);filter:brightness(1.7) drop-shadow(0 0 10px rgba(255,180,0,.95))}
+  100%{transform:scale(1);filter:drop-shadow(0 0 1.5px rgba(255,180,0,.6))}}
+.step.standby .reactor{opacity:.72}                           /* market closed: the duty waits for the open, slower */
+.step.standby .rx-out{animation-duration:72s}.step.standby .rx-gyro{animation-duration:21s}.step.standby .rx-tilt{animation-duration:48s}
+.step.standby .rx-in{animation-duration:27s}.step.standby .rx-tilt .energy{animation-duration:6s}.step.standby .rx-core .bead{animation-duration:4.2s}
+@keyframes gyro{from{transform:rotate3d(1,.35,0,0deg)}to{transform:rotate3d(1,.35,0,360deg)}}
+@keyframes energy{to{stroke-dashoffset:-174}}
+@keyframes shutter{0%,100%{opacity:.3}50%{opacity:1}}
+@keyframes nucleus{to{transform:translate(1.5px,-1.5px)}}
+@keyframes bead{50%{opacity:.55}}
+.step.running .tt{background:linear-gradient(90deg,var(--muted) 35%,var(--ink-strong) 50%,var(--muted) 65%);background-size:250% 100%;-webkit-background-clip:text;background-clip:text;color:transparent;animation:shine 1.6s linear infinite}
+@keyframes shine{from{background-position:100% 0}to{background-position:-150% 0}}
+.step .node.pop{animation:pop .55s var(--ease)}
+@keyframes pop{0%{transform:scale(.55)}60%{transform:scale(1.2)}100%{transform:scale(1)}}
+.lvb{display:inline-flex;align-items:center;gap:6px;margin-top:6px;font-size:11.5px;font-weight:600;color:var(--green);background:var(--green-bg);border-radius:999px;padding:2px 9px;max-width:100%}
+.lvb i{flex:none;width:6px;height:6px;border-radius:50%;background:currentColor;animation:blinkdot 1.4s ease-in-out infinite}
+.lvb.wait{color:var(--blue);background:var(--blue-bg)}
+@keyframes blinkdot{50%{opacity:.2}}
+@keyframes spin{to{transform:rotate(360deg)}}
+@keyframes pulse{50%{box-shadow:0 0 0 6px var(--blue-bg)}}
+
+/* side panel: real settings and the time machine. Slides over the page, minimise with the – button. */
+.side{position:fixed;top:0;right:0;bottom:0;width:min(390px,100vw);background:var(--surface);border-left:1px solid var(--line);box-shadow:-10px 0 28px rgba(0,0,0,.14);z-index:40;transform:translateX(102%);transition:transform .35s var(--ease);display:flex;flex-direction:column}
+.side.open{transform:none}
+.sidehead{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:14px 18px;border-bottom:1px solid var(--line)}
+.sidebody{overflow:auto;padding:2px 18px 14px;flex:1}
+.sx{border-bottom:1px solid var(--line2)}
+.sx>summary{list-style:none;cursor:pointer;display:flex;align-items:center;gap:8px;padding:10px 0;font-size:14.5px;font-weight:600;color:var(--ink-strong)}
+.sx>summary::-webkit-details-marker{display:none}
+.sx>summary::before{content:"▸";display:inline-block;width:10px;color:var(--muted);transition:transform .2s var(--ease)}
+.sx[open]>summary::before{transform:rotate(90deg)}
+.sxs{margin-left:auto;font-size:12px;font-weight:400;color:var(--muted);text-align:right}
+.sxs .w{color:var(--yellow);font-weight:600}.sxs .u{color:var(--blue);font-weight:600}
+.sxb{padding:0 0 10px 18px}
+.sxhelp{margin:2px 0 8px;font-size:12px;line-height:1.5;color:var(--muted)}
+.sxh{display:flex;align-items:baseline;justify-content:space-between;gap:8px;margin:14px 0 0;font-family:var(--serif);font-size:17px;color:var(--ink-strong)}
+.sxh small{font-family:var(--sans,inherit);font-size:11.5px;color:var(--muted)}
+.srow.chg{box-shadow:inset 3px 0 0 var(--blue);padding-left:8px}
+.sidefoot{display:flex;align-items:center;gap:8px;padding:10px 18px;border-top:1px solid var(--line);background:var(--surface)}
+.sidefoot .sfnote{margin-right:auto;font-size:12.5px;color:var(--muted)}.sidefoot .sfnote.on{color:var(--blue);font-weight:600}
+.sideact{display:flex;gap:6px}
+.sidefoot .profbtn{margin-left:0;max-width:130px;flex:none}
+.sconf{position:absolute;inset:0;z-index:2;display:flex;align-items:flex-end;background:rgba(0,0,0,.45)}
+.sconf[hidden]{display:none}
+.sconf .sbox{width:100%;max-height:80%;overflow:auto;background:var(--surface);border-top:1px solid var(--line);padding:16px 18px 18px;box-shadow:0 -10px 28px rgba(0,0,0,.2)}
+.sconf h4{margin:0 0 8px;font-size:16px;color:var(--ink-strong)}
+.sconf ul{margin:0 0 8px;padding-left:18px;font-size:13px;line-height:1.55;color:var(--ink)}
+.sconf p{margin:0 0 4px;font-size:12.5px;color:var(--muted)}
+.sidesec{font-family:var(--serif);font-size:19px;color:var(--ink-strong);margin:16px 0 6px}
+.srow{user-select:none;display:flex;justify-content:space-between;align-items:center;gap:10px;padding:5px 0;font-size:13.5px;color:var(--ink-strong);border-bottom:1px solid var(--line2)}
+.srow small{display:block;color:var(--muted);font-size:11.5px}.srow.out small{color:var(--yellow);font-weight:600}
+.side select,.side input.snum{border:1px solid var(--line);border-radius:6px;background:var(--surface);color:var(--ink-strong);padding:4px 6px;font-size:13px;max-width:180px}
+.side input.snum{width:96px;border-color:var(--blue)}.stip{color:var(--muted);font-size:11.5px;margin:0 0 4px}
+.sbtns{display:flex;gap:8px;margin:10px 0 4px;flex-wrap:wrap}
+.btn2{border:1px solid var(--line);background:var(--surface);color:var(--ink);border-radius:6px;padding:6px 12px;font-size:13px;font-weight:500}
+.btn2:hover{background:var(--line2)}.btn2:disabled{opacity:.45}
+.btn2.main{background:var(--cta-bg);color:var(--cta-fg);border-color:var(--cta-bg)}
+.tmpick{display:flex;gap:6px;flex-wrap:wrap;margin:6px 0}
+.tmday{font-family:var(--mono);font-size:22px;font-weight:700;color:var(--ink-strong)}
+.tmbar{height:4px;background:var(--line2);border-radius:4px;overflow:hidden;margin:6px 0 8px}.tmbar span{display:block;height:100%;background:var(--blue);transition:width .3s linear}
+.tmstats{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin:8px 0}
+.tmstats div{background:var(--canvas);border:1px solid var(--line2);border-radius:6px;padding:6px 8px;font-size:11px;color:var(--muted)}
+.tmstats b{display:block;font-family:var(--mono);font-size:15px;color:var(--ink-strong)}
+#tmview.hide{display:none}
+.tmlist{font-size:12.5px;margin:6px 0}.tmlist div{padding:3px 0;border-bottom:1px solid var(--line2)}
+
+/* first screen: everything important without scrolling */
+.hero{display:grid;grid-template-columns:1.1fr 1.1fr 1fr;grid-template-areas:"now live feed" "money money feed";gap:14px;margin-top:14px;align-items:start}
+.hero>#stage,.hero>.live{align-self:stretch}
+.hero>.killp{align-self:stretch;height:0;min-height:100%}          /* the feed fills its column but never makes the other boxes taller */
+.killp .lfeed{flex:1;min-height:0;overflow:hidden}
+.hero .panel{padding:18px 20px}
+.live{grid-area:live}.money{grid-area:money}
+.killp{grid-area:feed;display:flex;flex-direction:column;min-height:0}
+.kstats{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin:10px 0}
+.kst{border:1px solid var(--line2);border-radius:8px;padding:8px 10px;background:var(--canvas)}
+.kst b{display:block;font-family:var(--mono);font-size:20px;color:var(--ink-strong);line-height:1.15}
+.kst span{font-size:11.5px;color:var(--muted);line-height:1.2;display:block}
+.killp .feed{flex:1;overflow:auto;max-height:170px;min-height:0}
+/* live feed: one line per real action, newest slides in on top */
+.lhead{display:flex;justify-content:space-between;align-items:baseline;gap:8px}
+.lnow{display:flex;align-items:center;gap:6px;font-size:11.5px;color:var(--muted);font-family:var(--mono);white-space:nowrap}
+.ldot{width:7px;height:7px;border-radius:50%;background:var(--green);animation:lpulse 1.4s var(--ease) infinite}
+.lnow.busy .ldot{background:var(--blue)}
+@keyframes lpulse{50%{opacity:.25}}
+.lfeed{list-style:none;margin:0;padding:0;height:206px;overflow:hidden;-webkit-mask-image:linear-gradient(#000 72%,transparent);mask-image:linear-gradient(#000 72%,transparent)}
+.lfeed li{display:grid;grid-template-columns:64px minmax(0,1fr) auto;gap:8px;align-items:center;padding:4px 0;font-size:12.5px;line-height:1.3;white-space:nowrap}
+.lfeed .tag{font-size:10px;padding:1px 0;text-align:center}
+.lfeed .tx{overflow:hidden;text-overflow:ellipsis}
+.lfeed .when{font-family:var(--mono);font-size:11px;color:var(--muted)}
+.lfeed li.new{animation:lin .35s var(--ease)}
+@keyframes lin{from{opacity:0;transform:translateX(16px);background:var(--line2)}to{opacity:1;transform:none;background:transparent}}
+.lsub{margin-top:8px;padding-top:8px;border-top:1px solid var(--line2)}
+@media (prefers-reduced-motion:reduce){.lfeed li.new,.ldot{animation:none}}
+
+/* what the bot did: one row per stage, the real result of that stage */
+.drow{border-top:1px solid var(--line2)}.drow:first-child{border-top:0}
+.drow summary{list-style:none;cursor:pointer;display:flex;flex-wrap:wrap;align-items:baseline;gap:4px 12px;padding:12px 0}
+.drow summary::-webkit-details-marker{display:none}
+.dot{width:9px;height:9px;border-radius:50%;background:var(--line);flex:none;align-self:center}
+.s-done .dot{background:var(--green)}.s-attention .dot{background:var(--yellow)}.s-blocked .dot{background:var(--red)}
+.s-running .dot{background:var(--blue);animation:pulse 1.4s var(--ease) infinite}
+.dname{font-weight:600;color:var(--ink-strong)}.dtitle{color:var(--muted);flex:1;min-width:200px}
+.dl{margin:0 0 8px 21px;padding-left:16px;font-size:14px}.dl li{margin:3px 0}
+.mini{border:1px solid var(--line);background:var(--surface);color:var(--ink);border-radius:6px;padding:4px 12px;font-size:13px;margin:0 0 12px 21px}
+.mini:hover{background:var(--line2)}.mini:disabled{opacity:.5;cursor:default}
+
+/* kill feed: newest event on top, a new line slides in once */
+.feed{list-style:none;margin:0;padding:0}
+.feed li{display:grid;grid-template-columns:62px 1fr auto;gap:8px;align-items:baseline;padding:7px 0;border-bottom:1px solid var(--line2);font-size:13px;line-height:1.35}
+.feed li:last-child{border-bottom:0}
+.feed .tag{text-align:center}.feed .when{font-family:var(--mono);font-size:12px;color:var(--muted);white-space:nowrap}
+.feed li.new{animation:feedin .7s var(--ease)}
+@keyframes feedin{from{opacity:0;transform:translateY(-6px);background:var(--line2)}to{opacity:1;transform:none;background:transparent}}
+@media (max-width:520px){.feed li{grid-template-columns:56px 1fr}.feed .when{grid-column:2}}
+
+/* stage panel */
+#stage{grid-area:now;min-height:0;overflow:hidden;position:relative}
+.view{position:absolute;inset:18px 20px;transition:opacity .45s var(--ease),transform .45s var(--ease)}
+.view.hide{opacity:0;transform:translateY(8px);pointer-events:none}
+.headline{font-family:var(--serif);font-size:23px;letter-spacing:-.025em;line-height:1.15;color:var(--ink-strong);margin:8px 0 6px;text-wrap:balance}
+#v-idle{position:relative;inset:auto}                 /* in the flow, so long text grows the panel instead of being cut */
+.lockname{font-family:var(--serif);font-size:42px;letter-spacing:-.035em;line-height:1;color:var(--ink-strong)}
+.bar{height:2px;background:var(--line2);border-radius:2px;overflow:hidden;margin:10px 0 12px}
+.bar span{display:block;height:100%;background:var(--blue);transform-origin:left;transform:scaleX(0);transition:transform .2s linear}
+/* share search: one share lights up at a time (from the first simple page) */
+.chips{display:flex;flex-wrap:wrap;gap:5px;max-height:140px;overflow:hidden;align-content:flex-start}
+.chip{font-family:var(--mono);font-size:11px;padding:2px 7px;border-radius:5px;border:1px solid var(--line);color:var(--muted);opacity:.5;transition:all .15s}
+.chip.now{background:var(--blue-bg);border-color:var(--blue);color:var(--blue);opacity:1;transform:scale(1.15)}
+.chip.seen{opacity:.8}
+.chip.pass{opacity:1;background:var(--green-bg);border-color:var(--green);color:var(--green);font-weight:700}
+.chip.lock{opacity:1;background:var(--green-bg);border-color:var(--green);color:var(--green);font-weight:800;transform:scale(1.25)}
+.chips.dense{gap:3px}.chips.dense .chip{font-size:9.5px;padding:0 4px;border-radius:4px}
+.chips.finishing .chip{animation:blink 1s ease-in-out infinite}
+@keyframes blink{50%{opacity:.25}}
+
+/* market + bento grids */
+.grid2{display:grid;grid-template-columns:1.35fr 1fr;gap:16px}
+.mrow{display:flex;gap:34px;align-items:flex-end;margin:6px 0 10px}
+.big{font-family:var(--mono);font-size:28px;font-weight:600;color:var(--ink-strong);line-height:1.1}
+.shares{display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:10px;margin-top:14px}
+.share{border:1px solid var(--line);border-radius:8px;padding:10px 12px;transition:box-shadow .2s var(--ease),transform .2s var(--ease)}
+.share:hover{box-shadow:0 2px 8px rgba(0,0,0,.04);transform:translateY(-1px)}
+.share canvas{height:36px!important}
+.wallet{display:grid;grid-template-columns:repeat(6,1fr);gap:0;border:1px solid var(--line);border-radius:12px;background:var(--surface);overflow:hidden}
+.w{padding:16px 18px;border-right:1px solid var(--line)}.w:last-child{border-right:0}
+.w .v{font-family:var(--mono);font-size:20px;font-weight:600;color:var(--ink-strong);margin:2px 0}
+.w .s{font-size:12px;color:var(--muted)}
+.sec{margin-top:26px}
+.sec-h{font-family:var(--serif);font-size:21px;letter-spacing:-.02em;color:var(--ink-strong);margin:0 0 10px}
+table.t{width:100%;font-size:14px;border-collapse:collapse}
+table.t th{font-weight:500;color:var(--muted);font-size:13px;text-align:left;padding:6px 8px;border-bottom:1px solid var(--line)}
+table.t td{padding:9px 8px;border-bottom:1px solid var(--line2);vertical-align:top}
+table.t td.n,table.t th.n{text-align:right;font-variant-numeric:tabular-nums}
+.legend span{margin-right:14px;font-size:13px}.legend i{display:inline-block;width:16px;border-top:2px dashed currentColor;vertical-align:middle;margin-right:6px}
+.reason{display:flex;justify-content:space-between;padding:7px 0;border-bottom:1px solid var(--line2);font-size:14px}
+.toast{position:fixed;left:50%;bottom:22px;transform:translate(-50%,12px);opacity:0;pointer-events:none;z-index:50;background:var(--cta-bg);color:var(--cta-fg);border-radius:8px;padding:10px 16px;font-size:14px;max-width:min(92vw,560px);transition:opacity .35s var(--ease),transform .35s var(--ease)}
+.toast.on{opacity:1;transform:translate(-50%,0)}
+.reveal{opacity:0;transform:translateY(12px);transition:opacity .6s var(--ease),transform .6s var(--ease);transition-delay:calc(var(--i,0) * 80ms)}
+.reveal.in{opacity:1;transform:none}
+.foot{margin-top:30px;font-size:13px;color:var(--muted)}.foot a{color:var(--ink)}
+@media (max-width:1100px){.hero{grid-template-columns:1fr 1fr;grid-template-areas:"now live" "money money" "feed feed"}.hero>.killp{height:auto;min-height:0}}
+@media (max-width:860px){.hero{grid-template-columns:1fr;grid-template-areas:"now" "live" "feed" "money"}.hero>.killp{height:auto;min-height:0}
+  .steps{grid-template-columns:repeat(4,minmax(0,1fr))}.tools{margin-left:0}}
+@media (max-width:860px){.grid2{grid-template-columns:1fr}.wallet{grid-template-columns:repeat(3,1fr)}.w:nth-child(3){border-right:0}.w:nth-child(-n+3){border-bottom:1px solid var(--line)}
+  .control{grid-template-columns:1fr 1fr}.go{grid-column:2;justify-self:end}}
+@media (max-width:520px){.wallet{grid-template-columns:repeat(2,1fr)}.w{border-right:1px solid var(--line)!important;border-bottom:1px solid var(--line)}
+  .control{grid-template-columns:1fr}.go{grid-column:1;width:100%}.st{font-size:11px}.lockname{font-size:40px}.headline{font-size:22px}#stage{min-height:0}.mrow{gap:20px}}
+/* phone: the same page, only tighter. The 4 steps stay in one row; nothing scrolls sideways. */
+@media (max-width:520px){.wrap{padding:12px 16px 48px}.flow{padding:10px 12px 12px}
+  .step{padding-right:6px}.step .line{margin-left:4px}.step .nm{font-size:12px}.step .tt{font-size:11px;-webkit-line-clamp:3}
+  .lvb{font-size:10.5px;padding:2px 7px;border-radius:8px;align-items:flex-start;line-height:1.3}.lvb i{margin-top:4px}
+  .top{gap:10px 12px}.tools{width:100%;gap:8px}.tools .clock{margin-left:0;margin-right:auto;font-size:11.5px}}
+/* profiles: a Netflix-like "Who's trading?" screen, always dark */
+.who{position:fixed;inset:0;z-index:40;background:#141414;color:#e5e5e5;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:28px;padding:24px 16px;opacity:0;pointer-events:none;transition:opacity .35s var(--ease)}
+.who[hidden]{display:none}.who.on{opacity:1;pointer-events:auto}
+.who h2{font-family:var(--sans);font-weight:500;font-size:clamp(28px,5vw,48px);margin:0;color:#fff;letter-spacing:-.01em}
+.who .tiles{display:flex;gap:clamp(14px,3vw,32px);flex-wrap:wrap;justify-content:center}
+.who .tile{background:none;border:0;padding:0;color:#808080;display:flex;flex-direction:column;align-items:center;gap:10px;width:clamp(96px,14vw,150px);cursor:pointer;transform:scale(.92);opacity:0;transition:color .2s,transform .45s var(--ease),opacity .45s var(--ease);transition-delay:calc(var(--i,0)*70ms)}
+.who.on .tile{transform:none;opacity:1}
+.who .ava{width:100%;aspect-ratio:1;border-radius:6px;display:flex;align-items:center;justify-content:center;font-size:clamp(36px,6vw,64px);font-weight:700;color:#fff;outline:3px solid transparent;transition:outline-color .2s,opacity .2s}
+.who .tile:hover,.who .tile:focus-visible{color:#fff}.who .tile:hover .ava,.who .tile:focus-visible .ava{outline-color:#fff}
+.who .tile.cur .ava{outline-color:#8c8c8c}
+.who .pname{font-size:clamp(14px,1.6vw,18px)}.who .psub{font-size:12px;color:#6d6d6d;margin-top:-6px;min-height:15px}
+.who .ava img,.profbtn i img{width:100%;height:100%;object-fit:cover;border-radius:inherit;display:block}
+.who .acts{display:none;gap:6px;margin-top:-4px}.who.manage .acts{display:flex}
+.who .pen{font-size:12px;color:#ccc;border:1px solid #555;border-radius:4px;padding:2px 8px;white-space:nowrap}.who .pen:hover{color:#fff;border-color:#fff}.who.manage .ava{opacity:.55}
+.who .wbtns button{background:none;color:#808080;border:1px solid #808080;padding:7px 20px;font-size:14px;letter-spacing:.06em;text-transform:uppercase;border-radius:2px}
+.who .wbtns button:hover{color:#fff;border-color:#fff}
+.who .wbtns{display:flex;gap:10px;flex-wrap:wrap;justify-content:center}
+.who.resetting .tile:hover .ava,.who.resetting .tile:focus-visible .ava{outline-color:#E50914}.who.resetting .tile:hover{color:#ff6b6b}
+.who .wtip{margin:-14px 0 0;font-size:14px;color:#b3b3b3;min-height:20px;text-align:center}
+.who .wtip.err{color:#ff6b6b}
+.who .wtm{display:flex;align-items:center;justify-content:center;gap:12px;flex-wrap:wrap;max-width:min(92vw,640px);background:#2a2410;border:1px solid #d9a400;color:#ffd666;border-radius:6px;padding:10px 16px;font-size:14px;text-align:center}
+.who .wtm[hidden]{display:none}
+.wconf{position:fixed;inset:0;z-index:2;background:rgba(0,0,0,.72);display:flex;align-items:center;justify-content:center;padding:16px}
+.wconf[hidden]{display:none}
+.wconf .wbox{background:#1f1f1f;border:1px solid #333;border-radius:8px;max-width:440px;width:100%;padding:22px 22px 18px;color:#e5e5e5}
+.wconf .whead{display:flex;align-items:center;gap:12px;margin-bottom:10px}
+.wconf .whead .ava{width:52px;height:52px;flex:none;border-radius:5px;font-size:24px;outline:0}
+.wconf h3{margin:0;font-size:20px;color:#fff;font-weight:600}
+.wconf ul{margin:8px 0 10px;padding-left:20px;font-size:13.5px;line-height:1.5;color:#cfcfcf}
+.wconf p{margin:0 0 14px;font-size:13px;color:#a3a3a3}
+.wconf .wrow{display:flex;gap:10px;justify-content:flex-end}
+.wconf button{border-radius:4px;padding:8px 18px;font-size:14px;font-weight:600;cursor:pointer}
+.wconf .wno{background:none;border:1px solid #808080;color:#e5e5e5}.wconf .wno:hover{border-color:#fff}
+.wconf .wyes{background:#E50914;border:1px solid #E50914;color:#fff}.wconf .wyes:hover{background:#f6121d}.wconf .wyes:disabled{opacity:.6;cursor:wait}
+.profbtn{display:inline-flex;align-items:center;gap:7px;border:1px solid var(--line);background:var(--surface);color:var(--ink-strong);border-radius:8px;height:34px;padding:0 10px 0 4px;margin-left:6px;font-size:13px;max-width:160px}
+.profbtn i{width:26px;height:26px;border-radius:5px;overflow:hidden;display:inline-flex;align-items:center;justify-content:center;color:#fff;font-style:normal;font-weight:700;font-size:13px;flex:none}
+.profbtn span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+@media (max-width:520px){.tools .profbtn span{display:none}.tools .profbtn{padding:0 4px}}
+@media (prefers-reduced-motion:reduce){*,*::before{transition:none!important;animation:none!important}.reveal,.chip{opacity:1;transform:none}}
+</style>
+</head>
+<body>
+<main class="wrap">
+
+  <header class="top reveal">
+    <div class="brand"><h1>Semi Final Bot</h1><span class="tag t-green" title="Real prices, practice money, no broker">Practice money</span><span class="tag t-yellow" id="tmtag" hidden title="The whole bot is living in the past. Exit in the control panel.">Time machine</span></div>
+    <div class="seg" role="group" aria-label="Market"><button id="b-us">US stocks</button><button id="b-india">India stocks</button></div>
+    <div class="tools">
+      <label class="visually-hidden" for="money">Money to trade with</label>
+      <div class="moneybox"><span class="mlab">Money</span><input id="money" type="number" min="0" step="any" class="num"><button id="setmoney">Set</button></div>
+      <button class="go" id="go"><span class="dots" aria-hidden="true"><i></i><i></i><i></i></span><span id="golabel">Run bot</span></button>
+      <button class="btn2 stoprun" id="stoprun" type="button" hidden title="Stop this market's Run; nothing is saved">Stop</button>
+      <span class="clock num" id="clock"></span>
+      <button id="profbtn" class="profbtn" type="button" title="Switch profile"><i id="profava">1</i><span id="profname">Profile 1</span></button>
+      <button id="panelbtn" class="theme" type="button" aria-label="Settings and time machine" title="Settings and time machine">
+        <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M4 7h10M18 7h2M4 17h4M12 17h8"/><circle cx="16" cy="7" r="2"/><circle cx="10" cy="17" r="2"/></svg>
+      </button>
+      <button id="theme" class="theme" type="button" aria-label="Switch light or dark theme" title="Switch light or dark theme">
+      <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><circle cx="12" cy="12" r="8.5" fill="none" stroke="currentColor" stroke-width="1.8"/><path d="M12 3.5a8.5 8.5 0 0 1 0 17z" fill="currentColor"/></svg>
+    </button>
+    </div>
+  </header>
+
+  <section class="flow reveal" style="--i:1" aria-label="The four steps of one run">
+    <div class="flowhead"><div class="status" id="status">Loading</div><span class="lbl num" id="pipestate"></span></div>
+    <ol class="steps" id="stages"></ol>
+  </section>
+
+  <div class="hero reveal" style="--i:3">
+    <section class="panel" id="stage" aria-live="polite">
+    <div class="view" id="v-idle">
+      <div class="lbl" id="idlelbl">Bot status</div>
+      <div id="headline" class="headline">Loading</div>
+      <div id="subline" class="muted" style="max-width:68ch"></div>
+    </div>
+    <div class="view hide" id="v-scan">
+      <div class="d-flex justify-content-between align-items-baseline"><span class="serif" style="font-size:20px" id="scantitle">Searching</span><span class="muted num" style="font-size:13px" id="scancount"></span></div>
+      <div class="bar"><span id="bar"></span></div>
+      <div class="chips" id="chips"></div>
+    </div>
+    </section>
+    <section class="panel live">
+      <div class="d-flex justify-content-between"><span class="lbl">Live market</span><span class="lbl num" id="mkttime"></span></div>
+      <div class="mrow">
+        <div><div class="lbl" id="ilabel">Index</div><div class="big num" id="ival">–</div><div class="num" style="font-size:13px;font-weight:600" id="ichg"></div></div>
+        <div><div class="lbl" id="flabel">Fear gauge</div><div class="big num" id="fval">–</div><div class="muted" style="font-size:13px">volatility</div></div>
+      </div>
+      <div style="height:84px"><canvas id="idxChart"></canvas></div>
+      <div class="shares" id="shares"></div>
+    </section>
+    <section class="panel killp" aria-label="What the bot is doing, live">
+      <div class="lhead"><div class="lbl">What the bot is doing, live</div><span class="lnow" id="lnow"><i class="ldot"></i><span id="lnowt">listening</span></span></div>
+      <div class="kstats" id="kstats"></div>
+      <ul class="lfeed" id="lfeed"></ul>
+      <div class="lbl lsub">Trades, newest first</div>
+      <ul class="feed" id="feed" aria-live="polite"></ul>
+    </section>
+    <section class="panel money">
+      <div class="lbl mb-2">Where is my money</div>
+      <table class="t" id="where"></table>
+    </section>
+  </div>
+
+  <section class="panel sec reveal" style="--i:3" aria-label="What the bot did">
+    <div class="d-flex justify-content-between align-items-baseline"><h2 class="sec-h m-0">What the bot did</h2><span class="lbl num" id="didtime"></span></div>
+    <div id="did" class="mt-2"></div>
+  </section>
+
+  <section class="sec reveal" style="--i:6">
+    <h2 class="sec-h">Wallet</h2>
+    <div class="wallet" id="wallet"></div>
+  </section>
+
+  <section class="panel sec reveal" style="--i:7">
+    <div class="d-flex justify-content-between align-items-baseline"><h2 class="sec-h m-0" id="ct">Price chart</h2><span class="lbl num" id="cs"></span></div>
+    <div style="height:260px" class="mt-2"><canvas id="pxChart"></canvas></div>
+    <div class="legend mt-2"><span style="color:var(--blue)"><i></i>Bought at</span><span style="color:var(--red)"><i></i>Sells if it falls</span><span style="color:var(--green)"><i></i>Sells for profit</span></div>
+  </section>
+
+  <div class="grid2 sec">
+    <section class="panel reveal" style="--i:8"><h2 class="sec-h">Trades</h2><table class="t" id="trades"></table></section>
+    <section class="panel reveal" style="--i:9"><h2 class="sec-h">Why the bot said no</h2><div id="saidno"></div></section>
+  </div>
+
+  <footer class="foot">Free price data can be up to 15 minutes late. Earlier pages: <a href="/simple">simple</a>, <a href="/full">full details</a>.</footer>
+</main>
+
+<aside class="side" id="side" aria-label="Control panel">
+  <div class="sidehead"><span class="sidesec m-0">Control panel · <span id="sidemkt"></span></span><span class="sideact"><button class="btn2" id="sidefold" title="Fold every section">Fold all</button><button class="btn2" id="sidemin" title="Minimise">–</button></span></div>
+  <div class="sidebody">
+    <details class="sx" data-x="timers" open><summary>Bot timers <span class="sxs" id="sxtim"></span></summary><div class="sxb">
+      <div class="muted" style="font-size:12.5px">What the bot keeps doing after a Run, while this program runs. Counts down live.</div>
+      <div id="timers"></div>
+      <div class="sbtns" style="margin-top:6px"><button class="btn2" id="tmredit" type="button">Edit timers</button></div>
+      <div id="tmrform" hidden></div>
+    </div></details>
+    <details class="sx" data-x="tm"><summary>Time machine <span class="sxs" id="sxtm">Off</span></summary><div class="sxb">
+      <div class="muted" style="font-size:12.5px">Live on a past day: the clock, the checks, buys and sells move on from there. It uses its own practice account; your real one is not changed.</div>
+      <div class="tmpick"><select id="tmY" aria-label="Year"></select><select id="tmM" aria-label="Month"></select><select id="tmD" aria-label="Day"></select></div>
+      <div class="tmpick"><select id="tmH" aria-label="Hour"></select><select id="tmMi" aria-label="Minute"></select><span class="muted" style="font-size:12px;align-self:center" id="tmzone"></span></div>
+      <div class="muted" style="font-size:12px;line-height:1.5" id="tmhours"></div>
+      <div class="tmpick"><select id="tmS" aria-label="Speed"></select></div>
+      <div class="muted" style="font-size:12px" id="tmrange"></div>
+      <div class="sbtns"><button class="btn2 main" id="tmGo">Start</button><button class="btn2" id="tmPause" disabled>Pause</button><button class="btn2" id="tmStop" disabled>Exit to today</button></div>
+      <div id="tmview" class="hide"><span class="tag t-yellow">In the time machine</span> <span class="muted" style="font-size:12.5px" id="tmstate"></span></div>
+    </div></details>
+
+    <div class="sxh">Settings <small title="Pick from a list, or double-click a setting to type any number (0 is allowed). Default = the numbers in BOT_INSTRUCTIONS.">used from the next run · double-click to type</small></div>
+    <div id="sets"></div>
+  </div>
+  <div class="sidefoot"><button class="profbtn" id="profswitch" type="button" title="Switch profile. Each profile has its own practice account, history, settings, budget and time machine."><i id="sideava">1</i><span id="sidename">Profile 1</span></button><span class="sfnote" id="setdirty">No changes</span><button class="btn2" id="setdef">Default</button><button class="btn2 main" id="setsave">Save</button></div>
+  <div class="sconf" id="sconf" role="alertdialog" aria-modal="true" aria-labelledby="sconfh" hidden>
+    <div class="sbox"><h4 id="sconfh">Save these changes?</h4><ul id="sconfl"></ul><p id="sconfp"></p>
+      <div class="sbtns"><button class="btn2" id="sconfno" type="button">No</button><button class="btn2 main" id="sconfyes" type="button">Yes, save</button></div></div>
+  </div>
+</aside>
+<div class="who" id="who" role="dialog" aria-modal="true" aria-labelledby="whoh" hidden>
+  <h2 id="whoh">Who's trading?</h2>
+  <div class="wtm" id="wtm" role="status" hidden></div>
+  <div class="tiles" id="tiles"></div>
+  <p class="wtip" id="wtip"></p>
+  <div class="wbtns"><button id="whomanage" type="button">Manage profiles</button><button id="whoreset" type="button">Reset</button></div>
+  <div class="wconf" id="wconf" role="alertdialog" aria-modal="true" aria-labelledby="wconfh" hidden>
+    <div class="wbox">
+      <div class="whead"><span class="ava" id="wconfava"></span><h3 id="wconfh">Reset this profile?</h3></div>
+      <ul>
+        <li>First everything still working is stopped: a Run, a past-years test, the time machine, the live checks</li>
+        <li>Both practice accounts (US and India): cash, bought shares and waiting orders</li>
+        <li>All trades, history, the live feed and daily reports</li>
+        <li>Its settings, last budget and saved past-years test</li>
+        <li>Its time machine and remembered day and speed</li>
+      </ul>
+      <p>The name and picture stay. Prices are shared and stay. This cannot be undone.</p>
+      <div class="wrow"><button class="wno" id="wno" type="button">No</button><button class="wyes" id="wyes" type="button">Yes, reset</button></div>
+    </div>
+  </div>
+  <input type="file" id="picfile" accept="image/png,image/jpeg,image/webp" hidden>
+</div>
+<div class="toast" id="toast" role="status"></div>
+
+<script>
+"use strict";
+const $ = id => document.getElementById(id);
+// the bot's stage 1 (loading the account) is not shown: it is part of step 1 "Search whole market"
+const STAGES = [[2, "Search whole market"], [3, "Search my shares"], [4, "Test past years"], [5, "Buy or sell"]];
+const LAYOUT = [[2], [3], [4], [5]];                  // page steps in one row: steps 1 and 2 work at the same time
+const PNUM = {1: "1", 2: "1", 3: "2", 4: "3", 5: "4"};
+const shown = n => PNUM[n] || String(n);                // the step label on the page (stage 1 is part of step 1)
+const stepNo = n => parseInt(shown(n), 10);
+const byPage = list => [...list].sort((a, b) => a.n - b.n);
+function fold(list) {                                 // stage 1 working or stopped shows on step 1
+  const a = list || [], one = a.find(s => s.n === 1);
+  return a.filter(s => s.n !== 1).map(s => s.n === 2 && one && (one.status === "running" || one.status === "blocked")
+    ? {...s, status: one.status, title: one.title, lines: one.lines} : s);
+}
+const NAMES = {us: "US", india: "India"};
+const EASE = "cubicBezier(0.16, 1, 0.3, 1)";
+const reduce = matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+/* ---------- wires between the steps: idle = a few faint still wires; done = calm green; working = amber, flowing, breathing */
+const WIRES = [];
+function wireLine() {
+  const spread = (Math.random() + Math.random() + Math.random() - 1.5) / 1.5;      // more wires near the middle
+  return {y: spread * 0.3, phase: Math.random() * Math.PI * 2, speed: Math.random() * 0.5 + 0.5, amp: Math.random() * 0.5 + 0.5,
+          freq: Math.random() * 0.02 + 0.012, th: Math.random() * 1.1 + 0.5, op: Math.random() * 0.45 + 0.25};
+}
+function drawWires() {
+  drawWires.t = (drawWires.t || 0) + 0.016;
+  for (const w of WIRES) {
+    const W = w.cv.clientWidth, H = w.cv.clientHeight, dpr = devicePixelRatio || 1;
+    if (!W || !H) continue;
+    if (w.cv.width !== Math.round(W * dpr) || w.cv.height !== Math.round(H * dpr)) { w.cv.width = Math.round(W * dpr); w.cv.height = Math.round(H * dpr); }
+    const nxt = w.next && document.getElementById(w.next), waiting = !!nxt && nxt.classList.contains("idle");
+    const ctx = w.ctx, step = waiting ? nxt : w.cv.closest(".step"), css = getComputedStyle(step);   // a wire into a waiting step stays quiet
+    const run = !waiting && (step.classList.contains("running") || step.classList.contains("loop")), idle = waiting || step.classList.contains("idle");
+    const want = Math.max(1, Math.min(w.lines.length, w.want || w.lines.length));    // how many wires this link shows
+    ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.clearRect(0, 0, w.cv.width, w.cv.height);   // every pixel row, at any screen scaling
+    ctx.setTransform(w.cv.width / W, 0, 0, w.cv.height / H, 0, 0);
+    ctx.strokeStyle = css.getPropertyValue("--wire").trim(); ctx.shadowColor = css.getPropertyValue("--wireglow").trim();
+    const flow = reduce ? 0 : run ? 1.2 : idle ? 0 : 0.3;
+    const shown = idle ? Math.min(4, want) : run ? Math.max(1, Math.floor(want * (0.6 + Math.sin(drawWires.t) * 0.45 * 0.4))) : want;
+    for (let i = 0; i < w.lines.length; i++) {
+      const l = w.lines[i];
+      l.phase -= l.speed * flow * 0.05;
+      if (i >= shown) continue;
+      ctx.beginPath();
+      const merge = w.key === "m" && w.ys, y0 = merge ? w.ys[i % 2] : H / 2, y1 = merge ? w.ye : H / 2;
+      for (let x = 0; x <= W; x += merge ? 2 : 4) {
+        const taper = Math.pow(Math.sin(Math.PI * x / W), 0.7);                     // the wires meet at both step circles
+        const room = merge ? 9 - l.th : H / 2 - 2 - l.th;                         // never touch the strip's edge
+        const base = y0 + (y1 - y0) * (1 - Math.cos(Math.PI * x / W)) / 2;        // two cables curving into one
+        const y = base + Math.max(-room, Math.min(room, (l.y * room + Math.sin(x * l.freq + l.phase) * l.amp * room * 0.6) * taper));
+        x ? ctx.lineTo(x, y) : ctx.moveTo(x, y);
+      }
+      ctx.lineWidth = l.th; ctx.globalAlpha = idle ? l.op * 0.55 : Math.min(l.op * (run ? 1.25 : 1), 0.95);
+      ctx.shadowBlur = run ? 4 * l.th : idle ? 0 : 2 * l.th;
+      ctx.stroke();
+    }
+    ctx.globalAlpha = 1; ctx.shadowBlur = 0;
+  }
+  if (!reduce) requestAnimationFrame(drawWires);
+}
+let market = pick(), data = null, busy = false, idxChart = null, pxChart = null, sparks = [], firstPaint = true;
+
+function pick() { const h = location.hash.slice(1); if (h === "us" || h === "india") return h; try { const m = localStorage.getItem("sfb.market"); if (m === "us" || m === "india") return m; } catch (e) {} return "us"; }
+const money = (v, c, d = 0) => v === null || v === undefined ? "–" : new Intl.NumberFormat(c === "INR" ? "en-IN" : "en-US", {style: "currency", currency: c || "USD", minimumFractionDigits: d, maximumFractionDigits: d}).format(v);
+const signed = (v, c) => v === null || v === undefined ? "–" : (v >= 0 ? "+" : "−") + money(Math.abs(v), c, 2);
+const pct = v => v === null || v === undefined ? "" : (v >= 0 ? "+" : "−") + Math.abs(v * 100).toFixed(2) + "%";
+const tone = v => v > 0 ? "pos" : v < 0 ? "neg" : "";
+const sleep = ms => new Promise(r => setTimeout(r, ms));
+const esc = s => String(s ?? "").replace(/[&<>"]/g, c => ({"&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;"}[c]));
+function toast(m) { const t = $("toast"); t.textContent = m; t.classList.add("on"); clearTimeout(toast.t); toast.t = setTimeout(() => t.classList.remove("on"), 4500); }
+async function get(u) { const r = await fetch(u); if (!r.ok) throw new Error((await r.json().catch(() => ({}))).detail || r.statusText); return r.json(); }
+async function post(u, b) { const r = await fetch(u, {method: "POST", headers: {"Content-Type": "application/json"}, body: JSON.stringify(b || {})}); const d = await r.json().catch(() => ({})); if (!r.ok) throw new Error(d.detail || r.statusText); return d; }
+
+/* entry: sections fade up one after another */
+const io = new IntersectionObserver(es => es.forEach(e => { if (e.isIntersecting) { e.target.classList.add("in"); io.unobserve(e.target); } }), {threshold: .08});
+document.querySelectorAll(".reveal").forEach(el => io.observe(el));
+
+/* ---------- stages: every status and every line comes from the bot's own saved facts (d.stages) */
+const openSet = new Set(), seen = {}; let didSig = "";
+const SNAME = Object.fromEntries(STAGES);
+const WKEY = {2: "a", 3: "b", 4: "t"};                 // wire after: market row, my-shares row, test step
+$("stages").innerHTML = LAYOUT.map((g, i) => `<li class="pstep ${g.length > 1 ? "pair" : "single"}">` + g.map(n =>
+    `<div class="step idle" id="st${n}" role="button" tabindex="0" title="Show what this step found"><div class="rail"><span class="node">${shown(n)}</span>` +
+    (g.length > 1 || i < LAYOUT.length - 1 ? `<span class="line wired"><canvas data-w="${WKEY[n]}"></canvas></span>` : "") +
+    `</div><div class="nm">${SNAME[n]}</div><div class="tt"></div><div class="lv"></div></div>`).join("") +
+  (g.length > 1 ? '<span class="join"><canvas data-w="m"></canvas></span>' : "") + "</li>").join("");
+const WNEXT = {a: "st3", b: "st4", t: "st5"};          // the step each wire leads into
+document.querySelectorAll("#stages canvas").forEach(cv => WIRES.push({cv, ctx: cv.getContext("2d"), key: cv.dataset.w,
+  next: WNEXT[cv.dataset.w], lines: Array.from({length: 16}, wireLine)}));
+function alignSteps() {                                // steps 2 and 3 sit level with the point where both searches meet
+  const pair = document.querySelector("#stages .pair"); if (!pair) return;
+  const top = pair.getBoundingClientRect().top, ys = [...pair.querySelectorAll(".node")].map(n => n.getBoundingClientRect().top + n.offsetHeight / 2 - top);
+  const mid = (ys[0] + ys[1]) / 2, m = WIRES.find(w => w.key === "m");
+  if (m) { m.ys = ys; m.ye = mid; }
+  document.querySelectorAll("#stages .single").forEach(li => { li.style.paddingTop = Math.max(0, mid - 13) + "px"; });
+}
+addEventListener("resize", alignSteps);
+requestAnimationFrame(drawWires);
+const SW = {idle: "Not started", running: "Running", done: "Done", blocked: "Blocked", attention: "Needs attention"};
+const SCLS = {idle: "idle", running: "running", done: "done", blocked: "bad", attention: "attn"};
+const ICON = {done: "✓", attention: "!", blocked: "✕"};
+const REACTOR = `<span class="reactor" aria-hidden="true">
+<svg class="rx-field" viewBox="0 0 100 100"><circle cx="50" cy="50" r="48" fill="#000"/>
+ <ellipse cx="50" cy="50" rx="34" ry="11" fill="none" stroke="#993300" stroke-width=".5" opacity=".45" transform="rotate(35 50 50)"/>
+ <ellipse cx="50" cy="50" rx="28" ry="8" fill="none" stroke="#1A0000" stroke-width="1.2" transform="rotate(-50 50 50)"/>
+ <g stroke="#993300" stroke-width=".5" opacity=".7"><path d="M50 50 L50 6"/><path d="M50 50 L88 30"/><path d="M50 50 L80 82"/><path d="M50 50 L14 74"/><path d="M50 50 L9 36"/></g></svg>
+<svg class="rx-out" viewBox="0 0 100 100"><circle cx="50" cy="50" r="45" fill="none" stroke="#993300" stroke-width=".8" stroke-dasharray="3 4"/>
+ <circle cx="50" cy="50" r="45" fill="none" stroke="#FFB400" stroke-width="1.8" stroke-dasharray="46 95" stroke-linecap="round"/></svg>
+<svg class="rx-gyro" viewBox="0 0 100 100"><circle cx="50" cy="50" r="40" fill="none" stroke="#FF8A00" stroke-width="1.6" stroke-dasharray="90 26 40 26"/></svg>
+<svg class="rx-tilt" viewBox="0 0 100 100"><g transform="rotate(-28 50 50)">
+ <ellipse cx="50" cy="50" rx="43" ry="15" fill="none" stroke="#FF5A00" stroke-width="1.3"/>
+ <ellipse class="energy" cx="50" cy="50" rx="46" ry="17" fill="none" stroke="#FFB400" stroke-width=".9" stroke-dasharray="14 160"/>
+ <rect x="5" y="47" width="3" height="6" fill="#FFB400"/><rect x="92" y="47" width="3" height="6" fill="#FFB400"/></g></svg>
+<svg class="rx-in" viewBox="0 0 100 100"><circle cx="50" cy="50" r="19" fill="none" stroke="#FFB400" stroke-width="1.8" stroke-dasharray="16 8"/>
+ <rect class="shut" x="48" y="27" width="4" height="5" fill="#FFB400"/><rect class="shut" x="68" y="48" width="5" height="4" fill="#FFB400" transform="rotate(30 70 50)"/><rect class="shut" x="31" y="58" width="4" height="5" fill="#FFB400"/></svg>
+<svg class="rx-core" viewBox="0 0 100 100"><circle cx="50" cy="50" r="9" fill="#000" stroke="#993300" stroke-width="1.4"/>
+ <circle cx="50" cy="50" r="6" fill="none" stroke="#FF8A00" stroke-width=".6" opacity=".6"/><circle class="bead" cx="50" cy="50" r="3.4" fill="#FFB400"/></svg>
+</span>`;
+const STAG = {idle: "t-grey", running: "t-blue", done: "t-green", blocked: "t-red", attention: "t-yellow"};
+const word = s => s === "idle" && busy ? "Waiting" : SW[s];
+const lastSt = {};
+/* Jobs of the bot loop (server clock): job -> [start, end or null, words]. A job rings its step while it runs and
+   for a few seconds after, so a quick check is still seen. Step 1 = the look-again, step 2 = held-share checks and
+   the look-again, step 4 = a live buy or sell. */
+let jobs = {}, jobOff = 0, jobSig = "", lastD = null;
+const JOBSTEP = {2: "market", 3: "held", 5: "trade"}, JOB_HOLD = 6;
+function setJobs(j, now) { if (j) { jobs = j; jobOff = now - Date.now() / 1000; } }
+function jobOn(n) {
+  const j = jobs[JOBSTEP[n]]; if (!j) return null;
+  const now = Date.now() / 1000 + jobOff;
+  return (j[1] === null ? now - j[0] < 120 : now - j[1] < JOB_HOLD) ? j[2] : null;
+}
+let lastWake = null;
+function kickReactors() {                           // each wake of the bot loop flares the turning reactors once
+  const w = jobs.wake && jobs.wake[0];
+  if (!w || w === lastWake) return;
+  const first = lastWake === null; lastWake = w;
+  if (first) return;                                // the page just opened: no old wake to show
+  document.querySelectorAll("#stages .step.loop").forEach(el => { el.classList.remove("kick"); void el.offsetWidth; el.classList.add("kick");
+    setTimeout(() => el.classList.remove("kick"), 2300); });
+}
+function jobsChanged() {                            // repaint the steps only when a ring starts or ends
+  kickReactors();
+  const sig = [2, 3, 5].map(n => jobOn(n) || "").join("|");
+  if (sig === jobSig) return; jobSig = sig;
+  if (lastD && lastD.market === market && lastD.stages) paintStages(lastD.stages, lastD);
+}
+setInterval(jobsChanged, 1000);
+function looping(n, d) {
+  // The reactor is decided by the server only (web.step_modes; rules in CLAUDE.md, "Step animations"). Do not add
+  // conditions here: the page draws what the server says. "live" = market open, "standby" = closed.
+  const m = d && d.modes && d.modes[n];
+  return m && m.mode === "reactor" ? m.pace : false;
+}
+function wireCounts(d) {                             // links after steps 1, 2, 3: shares found, shares held and profit, test result
+  if (!d) return [16, 16, 16];
+  const found = (d.passed || []).length, all = Math.max((d.universe || []).length, 1), held = (d.positions || []).length;
+  return [3 + Math.round(13 * Math.min(found / all, 1)),
+          Math.min(16, 3 + 5 * held + ((d.floating || 0) > 0 ? 3 : 0)),
+          d.test_pf ? Math.max(3, Math.min(16, Math.round(d.test_pf * 6))) : 3];
+}
+function liveFor(n, d) {                              // what the bot keeps doing after the run, from real account data
+  if (!d || busy || (d.run && d.run.running) || !d.auto_on) return "";
+  const nm = s => String(s).replace(/\.NS$/, ""), pos = d.positions || [], buys = (d.orders || []).filter(o => o.side === "BUY");
+  if (n === 3 && pos.length) {
+    const s = pos.map(p => nm(p.symbol)).join(", "), nx = pos.map(p => ((d.watch || {})[p.symbol] || {}).next_at).find(Boolean);
+    if (d.sim) return `<span class="lvb wait"><i></i>Holding ${esc(s)} · checked at each Run on the day's prices</span>`;   // no live prices in the past
+    return d.open ? `<span class="lvb"><i></i>Watching ${esc(s)} live${nx ? " · next check " + esc(nx) : ""}</span>`
+                  : `<span class="lvb wait"><i></i>Holding ${esc(s)} · watching starts at the open</span>`;
+  }
+  if (n === 5 && buys.length) {
+    const s = buys.map(o => nm(o.symbol)).join(", ");
+    if (d.sim) return d.open ? `<span class="lvb"><i></i>Buying ${esc(s)} at today's opening price</span>`      // the past has no live prices
+                             : `<span class="lvb wait"><i></i>${esc(s)} buy when the market opens, at the opening price</span>`;
+    return d.open ? `<span class="lvb"><i></i>Buying ${esc(s)} at the live price</span>`
+                  : `<span class="lvb wait"><i></i>${esc(s)} buys when the market opens</span>`;
+  }
+  return "";
+}
+function paintStages(list, d) {
+  const all = fold(list); lastD = d;
+  STAGES.forEach(([n, name]) => { const s = all.find(x => x.n === n) || {status: "idle", title: ""}, el = $("st" + n), node = el.querySelector(".node");
+    const loop = s.status !== "running" && looping(n, d);           // reactor: the server says this step's work repeats
+    const job = !loop && s.status !== "running" && !(d && d.run && d.run.running) && jobOn(n);   // a loop job (step 4) rings
+    const shownSt = job ? "running" : s.status;
+    el.className = "step " + SCLS[shownSt] + (loop ? " loop" + (loop === "standby" ? " standby" : "") +
+      (el.classList.contains("kick") || jobOn(n) ? " kick" : "") : "");   // a job on a reactor step flares it
+    if (loop) { if (!node.querySelector(".reactor")) node.innerHTML = REACTOR; }   // keep it turning between polls
+    else node.textContent = ICON[shownSt] || shown(n);
+    if (lastSt[n] && lastSt[n] !== s.status && ["done", "attention", "blocked"].includes(s.status)) { node.classList.remove("pop"); void node.offsetWidth; node.classList.add("pop"); }
+    lastSt[n] = s.status;
+    el.querySelector(".tt").textContent = s.status === "idle" ? (s.title && !["Waiting", "Not checked yet"].includes(s.title) ? s.title : busy ? "Waiting" : "Not run yet")
+                                       : s.status === "running" ? s.title + "…" : s.title;          // a grey step still says why
+    el.querySelector(".lv").innerHTML = job ? `<span class="lvb"><i></i>${esc(job)} now</span>` : liveFor(n, d);
+    el.setAttribute("aria-label", `${name}: ${word(s.status)}. ${s.title || ""}`); });
+  const wc = wireCounts(d);
+  WIRES.forEach(w => { w.want = {a: wc[0], b: wc[1], m: Math.max(wc[0], wc[1]), t: wc[2]}[w.key]; });
+  const pair = document.querySelector("#stages .pair");
+  if (pair) {                                          // the merging cable shows how both searches are doing
+    const cls = [2, 3].map(n => $("st" + n).classList);
+    const any = c => cls.some(x => x.contains(c)), all = c => cls.every(x => x.contains(c));
+    pair.className = "pstep pair " + (any("running") ? "running" : any("loop") ? "loop" : any("bad") ? "bad" : any("attn") ? "attn" : all("done") ? "done" : "idle");
+  }
+  alignSteps();
+  if (reduce) requestAnimationFrame(drawWires);                       // still wires: draw once per change
+  const r = (d && d.run) || {}, cur = all.find(x => x.status === "running");
+  $("pipestate").textContent = r.running && cur ? `Running now · step ${stepNo(cur.n)} of 4` : r.finished ? `Finished · last run ${r.finished}` : all.length ? "Press Run bot to start" : "";
+}
+const FTAG = {BUY: "t-green", SELL: "t-red", ORDER: "t-blue", CANCEL: "t-grey", BLOCK: "t-red", RISK: "t-yellow", STOP: "t-blue", LIVE: "t-grey"};
+let feedKeys = null;
+const KS = [["checked", "shares checked", "last run"], ["passed", "passed every check", "last run"], ["bought", "bought", "all time"],
+            ["sold", "sold", "all time"], ["refused", "refused by the rules", "all time"], ["blocked", "days with no buys", "market or safety stop"]];
+function paintFeed(d) {
+  const st = d.feed_stats || {};
+  if (!$("ks0")) $("kstats").innerHTML = KS.map(([, l, w], i) => `<div class="kst" title="${w}"><b class="num" id="ks${i}">–</b><span>${l}</span></div>`).join("");
+  KS.forEach(([k], i) => { const v = st[k]; if (v === null || v === undefined) { $("ks" + i).textContent = "–"; $("ks" + i).dataset.v = ""; } else countTo($("ks" + i), v, x => Math.round(x).toLocaleString()); });
+  const f = d.feed || [], keys = f.map(x => x.date + x.tag + x.text);
+  if (feedKeys && keys.join("|") === feedKeys.join("|")) return;
+  const old = new Set(feedKeys || keys);
+  $("feed").innerHTML = f.length ? f.map((x, i) => {
+    const t = x.symbol && x.text.startsWith(x.symbol) ? x.text.slice(x.symbol.length).replace(/^[:\s]+/, "") : x.text;
+    return `<li class="${old.has(keys[i]) ? "" : "new"}"><span class="tag ${FTAG[x.tag] || "t-grey"}">${esc(x.tag)}</span><span>${x.symbol ? "<strong>" + esc(x.symbol) + "</strong> " : ""}${esc(t)}</span><span class="when">${esc(x.date)}</span></li>`;
+  }).join("") : '<li><span></span><span class="muted">Nothing yet. Buys, sells, stop moves and blocks appear here as they happen.</span></li>';
+  feedKeys = keys;
+}
+/* ---------- live feed: real lines from the bot, shown one at a time like a game kill feed */
+const LTAG = {LIVE: "t-blue", RUN: "t-blue", MARKET: "t-yellow", SCAN: "t-blue", PASS: "t-green", SKIP: "t-grey", TEST: "t-yellow",
+              ORDER: "t-blue", BUY: "t-green", SELL: "t-red", REFUSE: "t-yellow", BLOCK: "t-red", STOP: "t-blue",
+              WATCH: "t-blue", HOLD: "t-grey", WAIT: "t-grey", IDLE: "t-grey", DONE: "t-green", ERROR: "t-red", CANCEL: "t-grey"};
+const LWORD = {LIVE: "re-checking", SKIP: "sorting shares", PASS: "sorting shares", SCAN: "sorting shares", MARKET: "checking the market",
+               TEST: "reading the past-years test", RUN: "running", ORDER: "deciding", REFUSE: "deciding", BLOCK: "deciding",
+               WATCH: "watching my shares", HOLD: "watching my shares", WAIT: "watching my shares", STOP: "watching my shares",
+               BUY: "trading", SELL: "trading", CANCEL: "trading", IDLE: "waiting", DONE: "waiting", ERROR: "stopped"};
+const LSHOW = 9, LPACE = 1100, LKEEP = 12;            // lines shown, ms between new lines, most lines waiting
+let liveId = 0, liveQ = [], liveT = null, liveGen = 0;
+function liveShow(x, anim) {
+  const ul = $("lfeed"), li = document.createElement("li");
+  if (anim) li.className = "new";
+  li.title = (x.symbol ? x.symbol + " " : "") + x.text;
+  li.innerHTML = `<span class="tag ${LTAG[x.tag] || "t-grey"}">${esc(x.tag)}</span><span class="tx">${x.symbol ? "<strong>" + esc(x.symbol) + "</strong> " : ""}${esc(x.text)}</span><span class="when">${esc(x.at)}</span>`;
+  if (ul.querySelector(".wait")) ul.innerHTML = "";
+  ul.prepend(li);
+  while (ul.children.length > LSHOW) ul.lastElementChild.remove();
+  const w = LWORD[x.tag] || "live";
+  $("lnowt").textContent = w;
+  $("lnow").classList.toggle("busy", !["waiting", "watching my shares"].includes(w));
+}
+function livePump() {
+  liveT = null;
+  if (!liveQ.length) return;
+  if (liveQ.length > LKEEP) liveQ = liveQ.slice(-LKEEP);          // never rush: older waiting lines are skipped, not sped up
+  liveShow(liveQ.shift(), true);
+  if (liveQ.length) liveT = setTimeout(livePump, LPACE);
+}
+async function livePoll() {
+  const gen = liveGen;
+  try {
+    const r = await get(`/api/live/${market}?after=${liveId}`);
+    if (gen !== liveGen) return;
+    setJobs(r.jobs, r.now); jobsChanged();
+    if (r.last < liveId) { liveId = 0; return; }            // the bot restarted: start over on the next poll
+    if (!r.items.length) return;
+    const first = !liveId;
+    liveId = r.items[r.items.length - 1].id;
+    if (first) { $("lfeed").innerHTML = ""; r.items.slice(-LSHOW).forEach(x => liveShow(x, false)); return; }
+    liveQ.push(...r.items);
+    if (!liveT) livePump();
+  } catch (e) {}
+}
+function liveReset() {
+  liveGen++; liveId = 0; liveQ = []; clearTimeout(liveT); liveT = null;
+  $("lfeed").innerHTML = '<li class="wait"><span></span><span class="tx muted">Listening to the bot…</span><span></span></li>';
+}
+function paintDid(d) {
+  if (!d.stages) {                                   // the bot window still runs older code than this page
+    $("did").innerHTML = '<div class="muted">The bot window is running an older version, so it cannot report its stages. Close the bot window and start it again.</div>';
+    didSig = ""; return;
+  }
+  const list = byPage(fold(d.stages)), sig = JSON.stringify([list, busy]);
+  if (sig === didSig) return; didSig = sig;
+  list.forEach(s => { if (seen[s.n] !== s.status && (s.status === "attention" || s.status === "blocked")) openSet.add(s.n); seen[s.n] = s.status; });
+  $("did").innerHTML = list.map(s => `<details class="drow s-${s.status}" data-n="${s.n}"${openSet.has(s.n) ? " open" : ""}><summary><span class="dot"></span><span class="dname">${shown(s.n)} · ${esc(s.name)}</span><span class="dtitle">${esc(s.title)}</span><span class="tag ${STAG[s.status]}">${word(s.status)}</span></summary>` +
+    (s.lines.length ? `<ul class="dl">${s.lines.map(l => `<li>${esc(l)}</li>`).join("")}</ul>` : "") +
+    (s.n === 4 ? `<button class="mini" id="retest"${s.status === "running" ? " disabled" : ""}>Test again</button>` : "") + `</details>`).join("");
+  const r = d.run || {}; $("didtime").textContent = r.running ? "Running now" : r.finished ? "Last run " + r.finished : "";
+}
+function jump(n) { const row = document.querySelector(`.drow[data-n="${n}"]`); if (!row) return; row.open = true; openSet.add(n); row.scrollIntoView({behavior: reduce ? "auto" : "smooth", block: "center"}); }
+$("stages").addEventListener("click", e => { const s = e.target.closest(".step"); if (s) jump(+s.id.slice(2)); });
+$("stages").addEventListener("keydown", e => { if ((e.key === "Enter" || e.key === " ") && e.target.classList.contains("step")) { e.preventDefault(); jump(+e.target.id.slice(2)); } });
+
+/* ---------- charts (quiet palette) */
+let C = {};
+function themeColors() {
+  const s = getComputedStyle(document.documentElement), v = n => s.getPropertyValue(n).trim();
+  C = {up: v("--green"), down: v("--red"), grid: v("--line2"), tick: v("--muted"), blue: v("--blue"), tip: v("--cta-bg"), tipText: v("--cta-fg")};
+}
+themeColors();
+const drawn = new Set();
+function drawIn(n) {                                  // the line draws itself from left to right, once
+  const step = 1100 / Math.max(n, 1);
+  const prevY = ctx => ctx.index === 0 ? ctx.chart.scales.y.getPixelForValue(ctx.chart.data.datasets[ctx.datasetIndex].data[0])
+    : ctx.chart.getDatasetMeta(ctx.datasetIndex).data[ctx.index - 1].getProps(["y"], true).y;
+  const delay = key => ctx => { if (ctx.type !== "data" || ctx[key]) return 0; ctx[key] = true; return ctx.index * step; };
+  return {x: {type: "number", easing: "linear", duration: step, from: NaN, delay: delay("xs")},
+          y: {type: "number", easing: "linear", duration: step, from: prevY, delay: delay("ys")}};
+}
+function lineChart(canvas, pts, opts = {}) {
+  const first = !drawn.has(canvas.id); drawn.add(canvas.id);
+  const col = pts[pts.length - 1] >= pts[0] ? C.up : C.down;
+  const ds = [{data: pts, borderColor: col, backgroundColor: col + "14", fill: true, pointRadius: 0, borderWidth: 1.6, tension: .3}];
+  for (const [v, c] of opts.lines || []) if (v) ds.push({data: pts.map(() => v), borderColor: c, borderDash: [5, 5], pointRadius: 0, borderWidth: 1.2, fill: false});
+  return new Chart(canvas, {type: "line", data: {labels: pts.map((_, i) => i), datasets: ds},
+    options: {animation: reduce ? false : first ? drawIn(pts.length) : {duration: 900, easing: "easeOutQuart"}, responsive: true, maintainAspectRatio: false,
+      plugins: {legend: {display: false}, tooltip: {enabled: !!opts.tips, backgroundColor: C.tip, titleColor: C.tipText, bodyColor: C.tipText, displayColors: false}},
+      scales: {x: {display: false}, y: {display: !!opts.axis, position: "right", grid: {color: C.grid}, border: {display: false}, ticks: {color: C.tick, font: {family: "Consolas"}}}}}});
+}
+function countTo(el, to, fmt) {          // smooth number change, only when the value really changes
+  const from = parseFloat(el.dataset.v ?? "NaN");
+  el.dataset.v = to;
+  if (reduce || isNaN(from) || to === null || to === undefined || from === to) { el.textContent = fmt(to); return; }
+  const o = {v: from}; anime({targets: o, v: to, duration: 700, easing: EASE, update: () => el.textContent = fmt(o.v)});
+}
+
+/* ---------- paint */
+function paintMarket(d) {
+  const k = d.card;
+  if (!k || !k.index) {
+    if (idxChart) { idxChart.destroy(); idxChart = null; } sparks.forEach(c => c.destroy()); sparks = [];
+    ["ival", "fval"].forEach(i => $(i).textContent = "–"); $("ichg").textContent = ""; $("mkttime").textContent = NAMES[d.market];
+    $("shares").innerHTML = '<div class="muted" style="font-size:14px">Market data appears after the first run.</div>'; return;
+  }
+  $("mkttime").textContent = `${NAMES[d.market]} · ${k.index.time || ""}`;
+  $("ilabel").textContent = k.index.label;
+  countTo($("ival"), k.index.last, v => v.toLocaleString("en-US", {maximumFractionDigits: 1}));
+  $("ichg").textContent = pct(k.index.change); $("ichg").className = "num " + tone(k.index.change);
+  $("flabel").textContent = k.fear ? k.fear.label : "Fear gauge";
+  countTo($("fval"), k.fear ? k.fear.last : null, v => v === null ? "–" : v.toFixed(2));
+  $("fval").className = "big num" + (k.fear && k.fear.last > 20 ? " warn" : "");
+  const tr = k.index.trend, col = tr[tr.length - 1] >= tr[0] ? C.up : C.down;
+  if (idxChart) { const ds = idxChart.data.datasets[0]; ds.data = tr; ds.borderColor = col; ds.backgroundColor = col + "14"; idxChart.data.labels = tr.map((_, i) => i); idxChart.update(); }
+  else idxChart = lineChart($("idxChart"), tr);
+  sparks.forEach(c => c.destroy()); sparks = [];
+  const st = k.stocks || [];
+  $("shares").innerHTML = st.length ? st.map((s, i) => `<div class="share"><div class="d-flex justify-content-between"><strong>${esc(s.symbol)}</strong><span class="num ${tone(s.change)}" style="font-size:13px">${pct(s.change)}</span></div><div class="num" style="font-size:18px;font-weight:600;color:var(--ink-strong)">${money(s.last, d.currency, 2)}</div><canvas id="sp${i}"></canvas></div>`).join("")
+    : `<div class="muted" style="font-size:14px">${esc(d.universe.length)} ${NAMES[d.market]} shares are checked on each run. Share cards appear for short lists.</div>`;
+  st.forEach((s, i) => sparks.push(lineChart($("sp" + i), s.trend)));
+}
+function waitingBuys(d) {                             // buy orders placed but not filled yet: money set aside, not spent
+  const b = (d.orders || []).filter(o => o.side === "BUY");
+  return {n: b.length, cost: b.reduce((t, o) => t + o.qty * (o.est_price || 0), 0)};
+}
+/* ---------- side panel: live countdowns of the bot's loop */
+let tmrs = null, tmrOff = 0;
+function paintTimers(d) {
+  if (!d || !d.timers) return;
+  tmrs = d.timers; tmrOff = d.timers.now - Date.now() / 1000;  // server clock vs this computer
+  tickTimers();
+}
+function tickTimers() {
+  const t = tmrs, box = $("timers"); if (!t || !box) return;
+  const now = Date.now() / 1000 + tmrOff;
+  const left = at => { if (!at) return "starting…"; const s = Math.max(0, Math.round(at - now)); return s >= 60 ? `${Math.floor(s / 60)} min ${s % 60} s` : `${s} s`; };
+  const row = (name, val, note) => `<div class="srow"><span>${esc(name)}<small>${esc(note)}</small></span><b class="num">${esc(val)}</b></div>`;
+  if (t.tm) { box.innerHTML = row("Time machine on", "its own clock", "Live timers rest; the trip runs each market day and buys at the open by itself"); $("sxtim").textContent = "time machine"; return; }
+  if (!t.on) { box.innerHTML = row("Auto checks", "off", "Started with TBOT_AUTO=0: nothing runs until you press Run bot"); $("sxtim").textContent = "off"; return; }
+  const open = t.open, held = Object.entries(t.held || {});
+  box.innerHTML =
+    row("Bot loop wakes", "in " + left(t.loop_next), `every ${t.every} s`) +
+    row("Waiting buys", open ? (t.buys ? "in " + left(t.loop_next) : "none waiting") : (t.buys ? `${t.buys} wait for the open` : "none waiting"), `every ${t.every} s while the market is open`) +
+    (held.length ? held.map(([s, at]) => row(`Held share ${s}`, open ? (at ? "in " + left(at) : "at the next loop") : "at the open", `stop and target: every ${secText(t.watch_min)} to ${secText(t.watch_max)}`)).join("")
+                 : row("Held shares", "none held", `stop and target: every ${secText(t.watch_min)} to ${secText(t.watch_max)}`)) +
+    row("Whole market + my shares", open ? (t.recheck_next ? "in " + left(t.recheck_next) : "at the next loop") : "at the open", `look again every ${Math.round(t.recheck_every / 60)} min while open`) +
+    row("New market day finished?", "in " + left(t.day_next), `checked every ${Math.round(t.day_every / 60)} min`) +
+    row("Full Run (new buys)", t.auto_run ? "by itself" : "press Run bot", "once per finished market day");
+  $("sxtim").textContent = open ? "market open" : "market closed";
+}
+setInterval(tickTimers, 1000);
+const TCHOICE = {loop: [15, 30, 60, 120, 300, 600], watch_min: [30, 60, 120, 300, 600], watch_max: [120, 300, 600, 1200, 1800, 3600],
+                 recheck: [60, 120, 300, 600, 900, 1800, 3600], day_check: [60, 300, 600, 1800, 3600]};
+const TNAME = {loop: "Bot loop wakes (and waiting buys)", watch_min: "Held share: quickest check", watch_max: "Held share: slowest check",
+               recheck: "Whole market + my shares", day_check: "New market day finished?"};
+const secText = s => s < 60 ? `${s} s` : `${+(s / 60).toFixed(1)} min`;
+$("tmredit").onclick = async () => {
+  const f = $("tmrform");
+  if (!f.hidden) { f.hidden = true; $("tmredit").textContent = "Edit timers"; return; }
+  let t; try { t = await get("/api/timers"); } catch (e) { toast("Cannot read the timers."); return; }
+  f.innerHTML = Object.keys(TNAME).map(k => { const ch = [...new Set([...TCHOICE[k], t.values[k]])].sort((a, b) => a - b);
+      return `<div class="srow"><span>${esc(TNAME[k])}<small>Default ${secText(t.defaults[k])}</small></span><select data-t="${k}">` +
+        ch.map(v => `<option value="${v}"${v === t.values[k] ? " selected" : ""}>${secText(v)}</option>`).join("") + "</select></div>"; }).join("") +
+    `<div class="sbtns" style="margin-top:6px"><button class="btn2" id="tmrdef" type="button">Default</button><button class="btn2 main" id="tmrsave" type="button">Save timers</button></div>`;
+  f.hidden = false; $("tmredit").textContent = "Close";
+  const pick = () => Object.fromEntries([...f.querySelectorAll("select[data-t]")].map(s => [s.dataset.t, +s.value]));
+  const saveT = vals => askBox("Save the bot timers?", Object.entries(vals).map(([k, v]) => `${TNAME[k]}: ${secText(v)}`),
+    "This profile only. Shorter times ask the free price data more often.", "Yes, save", async () => {
+      try { const r = await post("/api/timers", {values: vals}); toast(r.message); f.hidden = true; $("tmredit").textContent = "Edit timers"; load(); }
+      catch (e) { toast(String(e.message || e)); } });
+  $("tmrsave").onclick = () => saveT(pick());
+  $("tmrdef").onclick = () => saveT(t.defaults);
+};
+function paintWallet(d) {
+  const w = waitingBuys(d), aside = w.n ? ` · about ${money(w.cost, d.currency)} set aside for ${w.n} waiting buy${w.n > 1 ? "s" : ""}` : "";
+  const c = d.currency, items = [
+    ["Budget", d.budget, "Practice money you put in", false], ["Money", d.cash, "Practice money not used yet" + aside, false],
+    ["Invested", d.spent, "Paid for shares held", false], ["Value now", d.value_now, "At live price", false],
+    ["Floating", d.floating, "Not real until sold", true], ["Booked", d.booked, "From shares sold", true]];
+  if (!$("w0")) $("wallet").innerHTML = items.map(([n, , s], i) => `<div class="w"><div class="lbl">${n}</div><div class="v num" id="w${i}">–</div><div class="s" id="ws${i}">${s}</div></div>`).join("");
+  items.forEach(([, , s], i) => { if ($("ws" + i)) $("ws" + i).textContent = s; });
+  items.forEach(([, v, , sign], i) => { const el = $("w" + i);
+    if (v === undefined || v === null) { el.textContent = "–"; el.dataset.v = ""; return; }
+    countTo(el, v, x => sign ? signed(x, c) : money(x, c)); el.className = "v num " + (sign ? tone(v) : ""); });
+}
+function paintWhere(d) {
+  const c = d.currency, rows = [];
+  for (const p of d.positions || []) { const w = (d.watch || {})[p.symbol]; const wt = w ? `<div><span class="tag ${w.level === "risk" ? "t-red" : w.level === "safe" ? "t-green" : "t-grey"}">${esc(w.level === "risk" ? "Showing risk" : w.level === "safe" ? "Rising safely" : w.level === "wait" ? "Waiting" : "Steady")}</span></div><div class="muted" style="font-size:12px">${esc(w.state)}${w.next_at ? ". Next check " + esc(w.next_at) : ""}</div>` : (d.sim ? '<div class="muted" style="font-size:12px">Checked at each Run on the day\'s prices</div>'
+          : d.open ? `<div class="muted" style="font-size:12px">First live check within ${esc(secText((d.timers && d.timers.every) || 60))}</div>`
+          : '<div class="muted" style="font-size:12px">Live checks start when the market opens</div>');
+    rows.push(`<tr><td><strong>${esc(p.symbol)}</strong><div class="muted" style="font-size:12px">holding ${p.qty}</div>${wt}</td><td class="n">${money(p.buy_price, c, 2)}<div class="muted" style="font-size:12px">now ${money(p.price, c, 2)}</div></td><td class="n ${tone(p.pnl)}">${signed(p.pnl, c)}</td><td class="n" style="font-size:13px">stop ${money(p.stop, c, 2)}${p.target ? "<br>target " + money(p.target, c, 2) : ""}</td></tr>`); }
+  for (const o of d.orders || []) rows.push(`<tr><td><strong>${esc(o.symbol)}</strong><div><span class="tag t-yellow">${o.side} ${o.qty} waiting</span></div><div class="muted" style="font-size:12px">${d.open ? "buying at the live price" : "buys at the next market open"}</div></td><td class="n">≈ ${money(o.est_price, c, 2)}<div class="muted" style="font-size:12px">≈ ${money(o.qty * (o.est_price || 0), c)} in total</div></td><td class="n muted">not bought yet</td><td class="n" style="font-size:13px">stop ${money(o.stop, c, 2)}</td></tr>`);
+  const w = waitingBuys(d);
+  rows.push(`<tr><td><strong>Money</strong><div class="muted" style="font-size:12px">practice money, not used yet${w.n ? ` (about ${money(w.cost, c)} of it is set aside for the waiting buy${w.n > 1 ? "s" : ""})` : ""}</div></td><td class="n" colspan="3">${money(d.cash, c)}</td></tr>`);
+  $("where").innerHTML = `<thead><tr><th>Share</th><th class="n">Bought</th><th class="n">Profit</th><th class="n">Sells at</th></tr></thead><tbody>${rows.join("")}</tbody>`;
+}
+function paintTrades(d) {
+  const c = d.currency, t = d.trades || [];
+  $("trades").innerHTML = t.length ? `<thead><tr><th>Sold</th><th>Share</th><th class="n">Qty</th><th class="n">Buy</th><th class="n">Sell</th><th class="n">Profit</th></tr></thead><tbody>` +
+    t.map(x => `<tr><td class="num" style="font-size:13px">${esc(x.exit_date)}</td><td><strong>${esc(x.symbol)}</strong></td><td class="n">${x.qty}</td><td class="n">${money(x.entry_price, c, 2)}</td><td class="n">${money(x.exit_price, c, 2)}</td><td class="n ${tone(x.pnl)}">${signed(x.pnl, c)}</td></tr>`).join("") + "</tbody>"
+    : `<tbody><tr><td class="muted">No trade closed yet. Closed trades appear here with their profit or loss.</td></tr></tbody>`;
+  const s = d.said_no || [];
+  $("saidno").innerHTML = s.length ? s.map(x => `<div class="reason"><span>${esc(x.reason)}</span><span class="num muted">${x.times}×</span></div>`).join("") : `<div class="muted" style="font-size:14px">Nothing refused yet.</div>`;
+}
+function paintPrice(d) {
+  const ch = d.chart; if (pxChart) pxChart.destroy(); pxChart = null;
+  if (!ch || !ch.points) { $("ct").textContent = "Price chart"; $("cs").textContent = "Appears after the first run"; return; }
+  $("ct").textContent = ch.kind === "share" ? `${ch.label}, last 60 days` : `${ch.label}, whole market`;
+  $("cs").textContent = ch.time || "";
+  pxChart = lineChart($("pxChart"), ch.points, {axis: true, tips: true, lines: [[ch.buy, C.blue], [ch.stop, C.down], [ch.target, C.up]]});
+}
+function paintIdle(d) {
+  const t = d.target, locked = t && ["waiting", "buying", "holding"].includes(d.state);
+  const tagMap = {blocked: ["t-red", "Market falling"], paused: ["t-yellow", "Paused"], nothing: ["t-grey", "Nothing to buy"], searching: ["t-grey", "Searching"],
+    waiting: ["t-blue", "Locked"], buying: ["t-blue", "Buying"], holding: ["t-green", "Holding"], new: ["t-grey", "Not started"]};
+  const [cls, word] = tagMap[d.state] || ["t-grey", "Status"];
+  $("idlelbl").innerHTML = `<span class="tag ${cls}">${word}</span>`;
+  $("headline").innerHTML = locked ? `<div class="lockname">${esc(t.symbol)}</div><div style="font-size:22px;margin-top:10px">${esc(d.headline.replace(/^(Locked on|Bought) \S+?\.\s*/, ""))}</div>` : esc(d.headline);
+  const bits = [];
+  if (!d.open) bits.push("Market closed.");
+  if (d.run && d.run.finished) bits.push(`Last checked at ${d.run.finished}.`);
+  if (d.run && d.run.error) bits.push("The last check had a problem. Press Run bot again.");
+  $("subline").textContent = bits.join(" ");
+}
+function render(d) {
+  data = d; simAt = Date.now(); $("tmtag").hidden = !d.sim; tick();
+  $("b-us").classList.toggle("on", market === "us"); $("b-india").classList.toggle("on", market === "india");
+  $("status").innerHTML = `<span class="tag ${d.open ? "t-green" : "t-red"}">${NAMES[d.market]} market ${d.open ? "open" : "closed"}</span>${!d.open && d.opens ? ` <span class="muted">· ${esc(d.opens)}</span>` : ""} <span class="muted num">${esc(d.clock)} market time · ${d.limit === 1 ? "one share at a time" : "up to " + d.limit + " shares"}</span>` +
+    (d.level ? ` <span class="tag ${d.level === "Good" ? "t-green" : d.level === "Normal" ? "t-yellow" : "t-red"}">${d.level} market: ${esc(d.level_text || "")}</span>` : "");
+  if (document.activeElement !== $("money")) $("money").value = Math.round(d.budget || 0);
+  setJobs(d.jobs, d.timers ? d.timers.now : Date.now() / 1000); paintStages(d.stages, d); paintDid(d); paintFeed(d); paintStop(d);
+  paintIdle(d); paintMarket(d); paintWallet(d); paintWhere(d); paintTrades(d); paintPrice(d); paintTimers(d);
+  firstPaint = false;
+}
+let fast = null;
+let appOn = false;                                   // the bot page starts only after a profile is picked
+function startApp() { if (appOn) return; appOn = true; boot(); }
+function reloadApp() {                               // reload inside the same profile, without the picker again
+  try { sessionStorage.setItem("sfb.picked", "1"); } catch (e) {}
+  location.reload();
+}
+async function load() {
+  try {
+    const d = await get(`/api/simple/${market}`);
+    if (d.page && load.page && d.page !== load.page && !busy) { reloadApp(); return d; }   // the website was updated
+    load.page = load.page || d.page;
+    if (d.profile && load.profile && d.profile !== load.profile) {          // another tab switched profile
+      try { sessionStorage.removeItem("sfb.picked"); } catch (e) {}
+      location.reload(); return d;
+    }
+    load.profile = load.profile || d.profile;
+    if (!busy) render(d);
+    if (d.test && d.test.running && !busy) waitTest();          // a test started by a Run or a settings change: follow it
+    const moving = d.sim && !d.sim.paused;                    // time machine: the page follows its clock
+    if (!busy && !fast && (moving || (d.stages || []).some(s => s.status === "running"))) fast = setTimeout(() => { fast = null; load(); }, moving ? 2000 : 3000);
+    return d;
+  } catch (e) { $("headline").textContent = "Cannot reach the bot. Is its window still open?"; return null; }
+}
+
+/* ---------- search animation: soft fade sweep, one chip per share really checked */
+let scanTimer = null;
+function show(view) { $("v-idle").classList.toggle("hide", view !== "idle"); $("v-scan").classList.toggle("hide", view !== "scan"); }
+function startScan(d) {                       // one share lights up at a time, like the first simple page
+  const names = (d && d.universe) || [], box = $("chips");
+  $("scantitle").textContent = `Searching all ${names.length} ${NAMES[market]} shares`;
+  box.className = "chips" + (names.length > 60 ? " dense" : "");
+  box.innerHTML = names.map(n => `<span class="chip">${esc(n)}</span>`).join("");
+  show("scan"); $("bar").style.transform = "scaleX(0)"; $("scancount").textContent = "";
+  const els = [...box.children], per = Math.min(420, Math.max(35, 4200 / Math.max(els.length, 1)));
+  let i = 0; clearInterval(scanTimer);
+  scanTimer = setInterval(() => {
+    if (i > 0) { els[i - 1].classList.remove("now"); els[i - 1].classList.add("seen"); }
+    if (i >= els.length) { clearInterval(scanTimer); box.classList.add("finishing"); $("scancount").textContent = "Checking the risk rules…"; return; }
+    els[i].classList.add("now"); $("scancount").textContent = `${i + 1} of ${els.length}: ${names[i]}`;
+    $("bar").style.transform = `scaleX(${(i + 1) / els.length})`; i++;
+  }, per);
+}
+async function stopScan(d) {
+  clearInterval(scanTimer);
+  const box = $("chips"), els = [...box.children], passed = new Set(d.passed || []);
+  box.classList.remove("finishing"); $("bar").style.transform = "scaleX(1)";
+  els.forEach(c => { c.classList.remove("now"); c.classList.add(passed.has(c.textContent) ? "pass" : "seen"); });
+  const lock = d.target && els.find(c => c.textContent === d.target.symbol);
+  if (lock) { lock.classList.add("lock"); $("scancount").textContent = "Locked on " + d.target.symbol; }
+  else $("scancount").textContent = d.state === "blocked" ? "Market falling, nothing chosen" : passed.size ? `${passed.size} passed every check` : "No share strong enough today";
+  await sleep(lock || passed.size ? 1800 : 1300);
+  show("idle");
+}
+
+/* ---------- run */
+async function run() {
+  if (busy) return; busy = true; $("go").disabled = true; $("golabel").textContent = "Running";
+  const m = market, t0 = Date.now();
+  try {
+    startScan(data);
+    try { await post(`/api/market/${m}/run`); } catch (e) { toast(String(e.message || e)); }
+    for (let i = 0; i < 4800; i++) {                   // the stage bar follows what the bot really reports
+      await sleep(i ? 500 : 250); const d = await get(`/api/simple/${m}`);
+      if (m === market) { paintStages(d.stages, d); paintDid(d); paintFeed(d); paintStop(d); }
+      if (m === market && d.test && d.test.running) $("scancount").textContent = `Past-years test ${Math.max(d.test.step || 0, 1)} of ${d.test.steps || 7}: the run waits for it`;
+      if (!d.run.running) break;
+    }
+    const w = 3800 - (Date.now() - t0); if (w > 0) await sleep(w);
+    const d = await get(`/api/simple/${m}`); if (m !== market) return;
+    await stopScan(d); busy = false; render(d);
+    const s5 = (d.stages || []).find(s => s.n === 5);
+    toast(d.headline + (s5 && s5.status === "done" && /^Bought/.test(s5.title) ? " " + s5.title + "." : ""));
+  } catch (e) { toast("Something went wrong: " + (e.message || e)); clearInterval(scanTimer); show("idle"); }
+  finally { busy = false; $("go").disabled = false; $("golabel").textContent = "Run bot"; }
+}
+function paintStop(d) {                              // Stop shows only while this market's Run works
+  const r = (d && d.run) || {}, b = $("stoprun");
+  b.hidden = !r.running; b.disabled = !!r.cancel; b.textContent = r.cancel ? "Stopping…" : "Stop";
+}
+$("stoprun").onclick = () => askBox(`Stop the ${NAMES[market]} Run?`,
+  ["It stops at its next safe point (within about a minute).", "Nothing is saved: the account stays as it was before this Run.",
+   "Held shares are still watched and waiting buys still fill; the whole-market look-again pauses until you press Run bot.",
+   "Then you can run the other market."],
+  "The time machine will not start it again until you press Run bot.", "Yes, stop", async () => {
+    try { toast((await post(`/api/market/${market}/run/stop`)).message); $("stoprun").disabled = true; $("stoprun").textContent = "Stopping…"; }
+    catch (e) { toast(String(e.message || e)); } });
+function choose(m) { if (busy || m === market) return; market = m; feedKeys = null; liveReset(); livePoll(); drawn.clear(); Object.keys(lastSt).forEach(k => delete lastSt[k]); try { localStorage.setItem("sfb.market", m); } catch (e) {} location.hash = m; boot(); }
+async function setMoney() {
+  const want = parseFloat($("money").value);
+  if (!(want > 0)) { toast("Type an amount first."); return; }
+  if (!data || !data.started) { try { toast((await post(`/api/market/${market}/budget`, {amount: want})).message); load(); } catch (e) { toast(String(e.message || e)); } return; }
+  const diff = want - data.budget;
+  if (Math.abs(diff) < 0.01) { toast("Money is already " + money(want, data.currency)); return; }
+  try { toast((await post(`/api/market/${market}/cash`, {amount: diff})).message); load(); } catch (e) { toast(String(e.message || e)); }
+}
+async function boot() { await load(); }                 // the bot runs only when you press Run bot
+$("go").onclick = run; $("b-us").onclick = () => choose("us"); $("b-india").onclick = () => choose("india"); $("setmoney").onclick = setMoney;
+$("did").addEventListener("toggle", e => { const n = +e.target.dataset.n; if (n) { if (e.target.open) openSet.add(n); else openSet.delete(n); } }, true);
+$("did").addEventListener("click", async e => {
+  if (e.target.id !== "retest") return;
+  e.target.disabled = true;
+  try { toast((await post(`/api/market/${market}/test`)).message); } catch (x) { toast(String(x.message || x)); load(); return; }
+  waitTest();
+});
+async function waitTest() {                          // the page waits for the backend: poll until all 7 tests are done
+  if (waitTest.on) return; waitTest.on = true;
+  const m = market;
+  try {
+    for (let i = 0; i < 1800; i++) {
+      await sleep(1000); if (m !== market) return;
+      const d = await get(`/api/simple/${m}`);
+      if (!busy) render(d);
+      if (!(d.test && d.test.running)) {
+        const s4 = (d.stages || []).find(s => s.n === 4);
+        toast(d.test && d.test.error ? "Past-years test failed: " + d.test.error : "Past-years test finished: " + (s4 ? s4.title : "done"));
+        return;
+      }
+    }
+  } catch (e) {} finally { waitTest.on = false; }
+}
+$("money").addEventListener("keydown", e => { if (e.key === "Enter") setMoney(); });
+setInterval(() => { if (!busy && appOn) load(); }, 15000);
+liveReset(); livePoll(); setInterval(() => { if (!document.hidden) livePoll(); }, 2000);
+let simAt = 0;
+function tick() {
+  const s = data && data.sim, n = s ? new Date((s.clock + (s.paused ? 0 : (Date.now() - simAt) / 1000 * s.speed)) * 1000) : new Date(); $("clock").textContent = n.toLocaleDateString("en-GB", {weekday: "short", day: "numeric", month: "short", year: "numeric"}) + " · " + n.toLocaleTimeString(); }
+tick(); setInterval(tick, 1000);
+function applyTheme(mode) {
+  const root = document.documentElement;
+  if (mode === "light" || mode === "dark") root.setAttribute("data-theme", mode); else root.removeAttribute("data-theme");
+  const dark = mode === "dark" || (mode !== "light" && matchMedia("(prefers-color-scheme: dark)").matches);
+  root.setAttribute("data-bs-theme", dark ? "dark" : "light");
+  themeColors();
+  if (idxChart) { idxChart.destroy(); idxChart = null; }
+  if (data && !busy) render(data);
+}
+let themeMode = "system";
+try { themeMode = localStorage.getItem("sfb.theme") || "system"; } catch (e) {}
+$("theme").onclick = () => {                       // one click: switch to the other theme and remember it
+  const dark = document.documentElement.getAttribute("data-bs-theme") === "dark";
+  themeMode = dark ? "light" : "dark";
+  try { localStorage.setItem("sfb.theme", themeMode); } catch (x) {}
+  applyTheme(themeMode);
+};
+matchMedia("(prefers-color-scheme: dark)").addEventListener("change", () => { if (themeMode === "system") applyTheme("system"); });
+applyTheme(themeMode);
+
+/* ---------- side panel: real settings + time machine */
+const MON = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+let curSet = {}, setF = {}, tmChart = null, tmTimer = null, tmInfo = null;
+const sideOpen = () => $("side").classList.contains("open");
+const TYPE = "type";                                // the last list item: type your own number
+const choiceText = (f, v) => typeof v === "boolean" ? (v ? "Yes" : "No") : f.unit === "%" ? +(v * 100).toFixed(2) + "%" : f.unit === ":1" ? v + " : 1" : f.unit === "×" ? v + "×" : String(v);
+const GHELP = {"Test past years: pass marks": "The bot replays the last 10 years with your settings. It may make new buys only when the last 5 of those years pass both marks below, with at least 30 trades. Example: 1.3× means it won $1.30 for every $1 it lost."};
+function paintSettings(fields) {
+  curSet = Object.fromEntries(fields.map(f => [f.key, JSON.stringify(f.value)]));
+  setF = Object.fromEntries(fields.map(f => [f.key, f]));
+  const groups = [...new Set(fields.map(f => f.group))].sort((a, b) => gRank(a) - gRank(b));
+  $("sets").innerHTML = groups.map(g => `<details class="sx" data-x="g:${esc(g)}"${sxIsOpen("g:" + g, false) ? " open" : ""}><summary>${esc(g)}<span class="sxs" data-gs></span></summary><div class="sxb">` +
+    (GHELP[g] ? `<p class="sxhelp">${esc(GHELP[g])}</p>` : "") +
+    fields.filter(f => f.group === g).map(f => {
+      const ch = f.choices.some(c => JSON.stringify(c) === JSON.stringify(f.value)) ? f.choices : [f.value, ...f.choices];
+      const note = f.outside ? `Outside your rules (${f.rule})` : f.rule ? "Rule: " + f.rule : "Default " + choiceText(f, f.default);
+      return `<div class="srow${f.outside ? " out" : ""}"${typeof f.value === "boolean" ? "" : ' title="Double-click to type any number"'}><span>${esc(f.label)}<small>${esc(note)}</small></span><select aria-label="${esc(f.label)}" data-k="${f.key}" data-prev='${JSON.stringify(f.value)}'>` +
+        ch.map(c => `<option value='${JSON.stringify(c)}'${JSON.stringify(c) === JSON.stringify(f.value) ? " selected" : ""}>${esc(choiceText(f, c))}</option>`).join("") +
+        (typeof f.value === "boolean" ? "" : `<option value="${TYPE}">✎ Type a number…</option>`) + "</select></div>";
+    }).join("") + "</div></details>").join("");
+  markDirty(); paintGuards();
+}
+function paintGuards() {                            // kill switch and halt restart, inside "Safety stops"
+  const box = document.querySelector('#sets details.sx[data-x="g:Safety stops"] .sxb');
+  if (!box) return;
+  let g = $("guards");
+  if (!g || g.parentNode !== box) { g = document.createElement("div"); g.id = "guards"; box.appendChild(g); }
+  const d = data || {}, stop = !!d.stopped, halt = !!d.halted, all = !!d.global_stop;
+  g.innerHTML = `<div class="srow${stop ? " out" : ""}"><span>Stop new buys (kill switch)<small>${all ? "ON for every market and profile (STOP file)" : stop ? "ON: no new buys in this market" : "Off. Held shares keep their stops either way"}</small></span>` +
+    `<button class="btn2${stop ? "" : " main"}" id="killbtn" type="button"${all ? " disabled" : ""}>${stop ? "Allow buys" : "Stop buys"}</button></div>` +
+    `<div class="srow${halt ? " out" : ""}"><span>Restart after a 5% halt<small>${halt ? "HALTED: restart only after you have reviewed the losses" : "Not halted"}</small></span>` +
+    `<button class="btn2" id="haltbtn" type="button"${halt ? "" : " disabled"}>Restart</button></div>`;
+  const where = `${NAMES[market]} market, this profile only.`;
+  $("killbtn").onclick = () => stop
+    ? askBox("Allow new buys again?", ["The bot may buy again, after every safety check."], where, "Yes, allow buys", () => guard("stop", {on: false}))
+    : askBox("Stop all new buys?", ["The bot will not buy anything in this market.", "Shares you hold keep their stops and are still sold by their own rules."], where, "Yes, stop buys", () => guard("stop", {on: true}));
+  $("haltbtn").onclick = () => askBox("Restart after the 5% halt?",
+    ["The halt is cleared and the drawdown is measured again from today's value.", "Do this only after you have looked at why it lost."],
+    where, "Yes, restart", () => guard("reset-halt"));
+}
+async function guard(path, body) {
+  try { const r = await post(`/api/market/${market}/${path}`, body); toast(r.message || "Done."); await load(); paintGuards(); }
+  catch (e) { toast(String(e.message || e)); }
+}
+const G_ORDER = ["Market", "Risk", "Safety stops", "Strategy", "Strategies"];   // anything else (pass marks) comes last
+const gRank = g => { const i = G_ORDER.indexOf(g); return i < 0 ? G_ORDER.length : i; };
+let sxOpen = {};                                    // which sections are open: a per-browser convenience only
+try { sxOpen = JSON.parse(localStorage.getItem("sfb.sx") || "{}") || {}; } catch (e) {}
+const sxIsOpen = (id, def) => id in sxOpen ? !!sxOpen[id] : def;
+document.querySelectorAll("#side details.sx[data-x]").forEach(el => { el.open = sxIsOpen(el.dataset.x, el.open); });
+$("side").addEventListener("toggle", e => {         // toggle does not bubble, so listen while it travels down
+  const x = e.target.dataset && e.target.dataset.x;
+  if (!x) return;
+  sxOpen[x] = e.target.open;
+  try { localStorage.setItem("sfb.sx", JSON.stringify(sxOpen)); } catch (er) {}
+}, true);
+$("sidefold").onclick = () => document.querySelectorAll("#side details.sx").forEach(el => { el.open = false; });
+const changedSel = () => [...document.querySelectorAll("#sets select")].filter(x => x.dataset.prev !== curSet[x.dataset.k]);
+function markDirty() {                              // per section: how many settings, outside the rules, not saved
+  let all = 0;
+  document.querySelectorAll("#sets details.sx").forEach(g => {
+    const sels = [...g.querySelectorAll("select")], ch = sels.filter(x => x.dataset.prev !== curSet[x.dataset.k]);
+    const out = sels.filter(x => setF[x.dataset.k] && setF[x.dataset.k].outside).length;
+    sels.forEach(x => x.closest(".srow").classList.toggle("chg", x.dataset.prev !== curSet[x.dataset.k]));
+    all += ch.length;
+    g.querySelector("[data-gs]").innerHTML = [sels.length + (sels.length === 1 ? " setting" : " settings"),
+      out ? `<span class="w">${out} outside rules</span>` : "", ch.length ? `<span class="u">${ch.length} not saved</span>` : ""].filter(Boolean).join(" · ");
+  });
+  $("setdirty").textContent = all ? `${all} not saved` : "No changes";
+  $("setdirty").classList.toggle("on", !!all);
+}
+function typeNumber(sel) {                          // swap the list for a box where any number can be typed
+  const f = setF[sel.dataset.k];
+  if (!f || typeof f.value === "boolean" || sel.hidden) return;
+  const pct = f.unit === "%", was = JSON.parse(sel.dataset.prev);
+  const box = document.createElement("input");
+  Object.assign(box, {type: "number", min: "0", step: "any", className: "snum", value: pct ? +(was * 100).toFixed(4) : was,
+                      title: pct ? "Type a percent, e.g. 0.5 for 0.5%" : "Type a number"});
+  box.setAttribute("aria-label", f.label + (pct ? " in percent" : ""));
+  sel.value = sel.dataset.prev; sel.hidden = true; sel.after(box); box.focus(); box.select();
+  let done = false;
+  const finish = keep => {
+    if (done) return; done = true;
+    const n = parseFloat(box.value);
+    if (keep && box.value.trim() !== "" && Number.isFinite(n)) {
+      if (n < 0) toast(f.label + ": type a number, 0 or more");
+      else {
+        const v = pct ? +(n / 100).toFixed(8) : n, j = JSON.stringify(v);
+        if (![...sel.options].some(o => o.value === j)) sel.add(new Option(choiceText(f, v), j), sel.options.length - 1);
+        sel.value = sel.dataset.prev = j;
+      }
+    }
+    box.remove(); sel.hidden = false; markDirty();
+  };
+  box.onkeydown = e => { if (e.key === "Enter") { e.preventDefault(); finish(true); } else if (e.key === "Escape") { e.stopPropagation(); finish(false); } };
+  box.onblur = () => finish(true);
+}
+$("sets").addEventListener("change", e => {
+  const s = e.target.closest("select");
+  if (!s) return;
+  if (s.value === TYPE) typeNumber(s); else s.dataset.prev = s.value;
+  markDirty();
+});
+$("sets").addEventListener("dblclick", e => {
+  const row = e.target.closest(".srow");
+  if (row && !e.target.closest("input, select")) { e.preventDefault(); getSelection().removeAllRanges(); typeNumber(row.querySelector("select")); }
+});
+async function loadSettings() { try { paintSettings((await get(`/api/settings/${market}`)).fields); } catch (e) { $("sets").textContent = "Cannot load the settings."; } }
+let pendSave = null;
+function askSave(def) {                             // Save and Default first show what changes, then Yes or No
+  const changed = changedSel(), J = JSON.stringify;
+  const items = def ? Object.values(setF).filter(f => J(f.value) !== J(f.default)).map(f => [f, f.value, f.default])
+                    : changed.map(x => [setF[x.dataset.k], JSON.parse(curSet[x.dataset.k]), JSON.parse(x.dataset.prev)]);
+  if (!items.length) { toast(def ? "Every setting is already the default." : "Nothing changed."); return; }
+  pendSave = {def, values: Object.fromEntries(changed.map(x => [x.dataset.k, JSON.parse(x.dataset.prev)]))};
+  const n = items.length, word = n === 1 ? "setting" : "settings";
+  $("sconfh").textContent = def ? `Put ${n} ${word} back to default?` : `Save ${n} ${word}?`;
+  $("sconfl").innerHTML = items.map(([f, a, b]) => `<li>${esc(f.label)}: ${esc(choiceText(f, a))} → <b>${esc(choiceText(f, b))}</b></li>`).join("");
+  $("sconfp").textContent = `${NAMES[market]} market, this profile only. The bot uses ${n === 1 ? "it" : "them"} from the next run.`
+    + (def && changed.length ? " Changes not saved yet are dropped." : "");
+  $("sconfyes").textContent = def ? "Yes, use defaults" : "Yes, save";
+  $("sconf").hidden = false; $("sconfno").focus();
+}
+function askBox(head, lines, para, yes, act) {      // the same box asks before other big steps too
+  pendSave = {act};
+  $("sconfh").textContent = head;
+  $("sconfl").innerHTML = lines.map(l => `<li>${esc(l)}</li>`).join("");
+  $("sconfp").textContent = para; $("sconfyes").textContent = yes;
+  $("sconf").hidden = false; $("sconfno").focus();
+}
+$("sconfno").onclick = () => { $("sconf").hidden = true; pendSave = null; };
+$("sconfyes").onclick = async () => {
+  if (!pendSave) return;
+  if (pendSave.act) { const act = pendSave.act; $("sconf").hidden = true; pendSave = null; await act(); return; }
+  $("sconfyes").disabled = true;
+  try {
+    const r = pendSave.def ? await post(`/api/settings/${market}/default`) : await post(`/api/settings/${market}`, {values: pendSave.values});
+    $("sconf").hidden = true; pendSave = null;
+    paintSettings(r.fields); toast(r.message); load();
+  } catch (e) { toast(String(e.message || e)); }
+  $("sconfyes").disabled = false;
+};
+document.addEventListener("keydown", e => {
+  if (e.key === "Escape" && !$("sconf").hidden) { e.stopPropagation(); $("sconf").hidden = true; pendSave = null; }
+}, true);
+const daysIn = (y, m) => new Date(y, m, 0).getDate();
+function dayOptions(keep) {
+  const n = daysIn(+$("tmY").value, +$("tmM").value), d = Math.min(keep || +$("tmD").value || 1, n);
+  $("tmD").innerHTML = Array.from({length: n}, (_, i) => `<option>${i + 1}</option>`).join(""); $("tmD").value = d;
+}
+function buildDates(s) {
+  if ($("tmY").dataset.r === s.first + s.last) return;
+  $("tmY").dataset.r = s.first + s.last;
+  const y0 = +s.first.slice(0, 4), y1 = +s.last.slice(0, 4), def = new Date(s.last);
+  def.setFullYear(def.getFullYear() - 1);
+  $("tmY").innerHTML = Array.from({length: y1 - y0 + 1}, (_, i) => `<option>${y0 + i}</option>`).join("");
+  $("tmM").innerHTML = MON.map((n, i) => `<option value="${i + 1}">${n}</option>`).join("");
+  $("tmY").value = def.getFullYear(); $("tmM").value = def.getMonth() + 1; dayOptions(def.getDate());
+  tmSess = s.sessions || null; tmHours();
+  $("tmMi").innerHTML = [0, 15, 30, 45].map(m => `<option value="${m}">:${String(m).padStart(2, "0")}</option>`).join("");
+  $("tmzone").textContent = market === "us" ? "New York time" : "India time";
+  $("tmS").innerHTML = Object.entries(s.speeds).map(([k, v]) => `<option value="${k}">${esc(v)}</option>`).join("");
+  $("tmS").value = "86400";
+  const k = s.pick;                                   // this profile's last day and speed
+  if (k && k.date && k.date >= s.first && k.date <= s.last) {
+    $("tmY").value = +k.date.slice(0, 4); $("tmM").value = +k.date.slice(5, 7); dayOptions(+k.date.slice(8, 10));
+  }
+  if (k && s.speeds[k.speed]) $("tmS").value = String(k.speed);
+  tmHours();                                         // labels for the remembered day
+  if (k && k.time) { $("tmH").value = String(+k.time.slice(0, 2)); $("tmMi").value = String(+k.time.slice(3, 5)); }
+  tmMinuteOn();
+}
+/* Both markets' open and close, shown in the picker's market time for the chosen day. */
+let tmSess = null;
+const ZNAME = {us: "New York", india: "India"}, MKT = {us: "US", india: "India"};
+function tzOff(tz, y, m, d) {                       // minutes ahead of UTC on that day (New York summer/winter time)
+  const t = Date.UTC(y, m - 1, d, 12);
+  const p = Object.fromEntries(new Intl.DateTimeFormat("en-US", {timeZone: tz, hourCycle: "h23", year: "numeric", month: "numeric",
+    day: "numeric", hour: "numeric", minute: "numeric"}).formatToParts(new Date(t)).map(x => [x.type, x.value]));
+  return (Date.UTC(+p.year, +p.month - 1, +p.day, +p.hour, +p.minute) - t) / 60000;
+}
+const hm = n => `${String(Math.floor(n / 60)).padStart(2, "0")}:${String(n % 60).padStart(2, "0")}`;
+function tmHours() {
+  if (!tmSess) {                                     // an older bot window: plain hours
+    if (!$("tmH").options.length) $("tmH").innerHTML = '<option value="">Time now</option>' +
+      Array.from({length: 24}, (_, h) => `<option value="${h}">${String(h).padStart(2, "0")}:00</option>`).join("");
+    return;
+  }
+  const y = +$("tmY").value, mo = +$("tmM").value, d = +$("tmD").value, here = tmSess[market];
+  const mins = t => +t.slice(0, 2) * 60 + +t.slice(3, 5);
+  const inHere = (m, t) => { const n = mins(t) - tzOff(tmSess[m].tz, y, mo, d) + tzOff(here.tz, y, mo, d); return ((n % 1440) + 1440) % 1440; };
+  const marks = {};                                  // hour -> ["US opens 09:30", ...]
+  for (const m of ["us", "india"]) for (const [k, w] of [["open", "opens"], ["close", "closes"]]) {
+    const n = inHere(m, tmSess[m][k]); (marks[Math.floor(n / 60)] ||= []).push(`${MKT[m]} ${w} ${hm(n)}`);
+  }
+  const keep = $("tmH").value;
+  $("tmH").innerHTML = '<option value="">Time now</option>' + Array.from({length: 24}, (_, h) =>
+    `<option value="${h}">${String(h).padStart(2, "0")}:00${marks[h] ? " · " + marks[h].join(", ") : ""}</option>`).join("");
+  $("tmH").value = keep;
+  const other = market === "us" ? "india" : "us", o = tmSess[other];
+  $("tmhours").innerHTML = `${MKT[market]} market: ${esc(here.open)}–${esc(here.close)} ${ZNAME[market]} time.<br>` +
+    `${MKT[other]} market: ${esc(o.open)}–${esc(o.close)} ${ZNAME[other]} time = ${hm(inHere(other, o.open))}–${hm(inHere(other, o.close))} ${ZNAME[market]} time on this day.`;
+}
+function tmMinuteOn() { $("tmMi").disabled = $("tmH").value === ""; }   // "Time now" needs no minute
+const tmTime = () => $("tmH").value === "" ? null : `${String($("tmH").value).padStart(2, "0")}:${String($("tmMi").value).padStart(2, "0")}`;
+const tmDate = () => `${$("tmY").value}-${String($("tmM").value).padStart(2, "0")}-${String($("tmD").value).padStart(2, "0")}`;
+function paintTm(s) {
+  tmInfo = s;
+  if (!s.first) { $("tmrange").textContent = "No saved prices yet. Press Run bot once first."; $("tmGo").disabled = true; return; }
+  buildDates(s); $("tmGo").disabled = false;
+  $("tmrange").textContent = `Pick a day between ${s.first} and ${s.last}.`;
+  $("tmGo").textContent = s.active ? "Start again" : "Start";
+  $("tmPause").disabled = !s.active; $("tmPause").textContent = s.paused && !s.run_pause ? "Resume" : "Pause";
+  $("tmStop").disabled = !s.active;
+  $("tmview").classList.toggle("hide", !s.active);
+  $("sxtm").innerHTML = s.active ? `<span class="w">On · ${esc(s.day)}</span>` : "Off";
+  if (!s.active) return;
+  if (document.activeElement !== $("tmS")) $("tmS").value = s.speed;
+  $("tmstate").textContent = `started on ${s.day}${s.run_pause ? " · the clock waits while its Run works" : s.paused ? " · paused" : ""}. The clock next to Run bot shows its time.`;
+}
+async function tmPoll() {
+  clearTimeout(tmTimer);
+  if (!sideOpen()) return;
+  try { paintTm(await get(`/api/tm/${market}`)); } catch (e) {}
+  tmTimer = setTimeout(tmPoll, 4000);
+}
+async function tmCtl(action, speed) {
+  try { await post(`/api/tm/${market}/control`, {action, speed}); if (action === "stop") reloadApp(); else { tmPoll(); load(); } }
+  catch (e) { toast(String(e.message || e)); }
+}
+function openSide(on) {
+  $("side").classList.toggle("open", on);
+  try { localStorage.setItem("sfb.panel", on ? "1" : "0"); } catch (e) {}
+  if (on) { $("sidemkt").textContent = NAMES[market]; loadSettings(); tmPoll(); }
+}
+$("panelbtn").onclick = () => openSide(!sideOpen());
+$("sidemin").onclick = () => openSide(false);
+$("setsave").onclick = () => askSave(false);
+$("setdef").onclick = () => askSave(true);
+$("tmY").onchange = $("tmM").onchange = () => { dayOptions(); tmHours(); };
+$("tmD").onchange = tmHours;                         // New York summer or winter time moves the India times
+$("tmH").onchange = tmMinuteOn;
+$("tmS").onchange = () => { if (tmInfo && tmInfo.active) tmCtl("speed", +$("tmS").value); };
+$("tmPause").onclick = () => tmCtl(tmInfo && tmInfo.paused ? "resume" : "pause");
+$("tmStop").onclick = () => askBox("Leave the time machine?",
+  ["The page goes back to today and your real practice account.", "The time-machine account stays until you press Start again."],
+  "Your real account is not changed.", "Yes, leave", () => tmCtl("stop"));
+$("tmGo").onclick = () => {
+  if (!(tmInfo && tmInfo.active)) return tmStart();
+  askBox("Start the time machine again?",
+    [`It starts again on ${tmDate()}${tmTime() ? " at " + tmTime() + " " + $("tmzone").textContent : ""}.`, "The time-machine account starts fresh: its cash, shares and trades are deleted."],
+    "Your real account is not changed.", "Yes, start again", tmStart);
+};
+async function tmStart() {
+  $("tmGo").disabled = true; $("tmGo").textContent = "Loading prices…";
+  try { await post(`/api/tm/${market}/start`, {date: tmDate(), speed: +$("tmS").value, time: tmTime()}); reloadApp(); }   // the whole page moves to that day
+  catch (e) { toast(String(e.message || e)); $("tmGo").disabled = false; $("tmGo").textContent = "Start"; }
+}
+window.addEventListener("hashchange", () => { if (sideOpen()) openSide(true); });
+try { if (localStorage.getItem("sfb.panel") === "1") openSide(true); } catch (e) {}
+
+/* ---------- profiles: Netflix-like picker, no log in */
+let profs = null;
+const avatar = p => p.picture ? `<img src="/api/profiles/${p.id}/picture?v=${p.picture}" alt="">` : esc(initial(p.name));
+const initial = n => { const d = /^Profile (\d)$/.exec(n.trim()); return d ? d[1] : (n.trim()[0] || "?").toUpperCase(); };
+function paintProfiles(r) {
+  profs = r;
+  const me = r.profiles.find(p => p.id === r.active) || r.profiles[0];
+  for (const [a, n] of [["profava", "profname"], ["sideava", "sidename"]]) { $(a).innerHTML = avatar(me); $(a).style.background = me.color; $(n).textContent = me.name; }
+  $("tiles").innerHTML = r.profiles.map((p, i) => `<button class="tile${p.id === r.active ? " cur" : ""}" data-p="${p.id}" style="--i:${i}">
+    <span class="ava" style="background:${p.color}">${avatar(p)}</span><span class="pname">${esc(p.name)}</span>
+    <span class="psub">${p.started.length ? esc(p.started.map(m => NAMES[m]).join(" · ")) : "New"}</span>
+    <span class="acts"><span class="pen" data-act="name">✎ Rename</span><span class="pen" data-act="pic">Picture</span></span></button>`).join("");
+}
+async function loadProfiles() { try { paintProfiles(await get("/api/profiles")); } catch (e) {} }
+function whoMode(m) {                            // "", "manage" or "resetting"
+  const w = $("who");
+  w.classList.toggle("manage", m === "manage"); w.classList.toggle("resetting", m === "resetting");
+  $("whomanage").textContent = m === "manage" ? "Done" : "Manage profiles";
+  $("whoreset").textContent = m === "resetting" ? "Cancel" : "Reset";
+  $("whoh").textContent = m === "resetting" ? "Pick a profile to reset" : "Who's trading?";
+  $("wtip").textContent = m === "resetting" ? "Everything of that profile is deleted, like a fresh start. You will be asked first." : "";
+  $("wtip").classList.remove("err");
+  $("wconf").hidden = true;
+}
+function whoErr(m) { $("wtip").textContent = m; $("wtip").classList.add("err"); toast(m); }   // easy to see on the picker
+async function whoTm() {                          // say which profile is in the time machine
+  try {
+    const s = await get("/api/tm/us"), me = profs && profs.profiles.find(p => p.id === profs.active);
+    $("wtm").hidden = !s.active;
+    if (s.active) $("wtm").textContent = `⏳ ${me ? me.name : "This profile"} is in the time machine (${new Date(s.clock * 1000).toISOString().slice(0, 10)}). `
+      + "Opening another profile, or resetting this one, goes back to today. Its day and speed stay remembered.";
+  } catch (e) {}
+}
+async function postWait(u) {                      // the bot may still be finishing a run: try again by itself for a while
+  for (let i = 0; ; i++) {
+    try { return await post(u); }
+    catch (x) {
+      const m = String(x.message || x);
+      if (!m.startsWith("Wait") || i >= 60) throw x;
+      whoErr(m + " Trying again…");
+      await new Promise(ok => setTimeout(ok, 3000));
+    }
+  }
+}
+let resetPid = null;
+function askReset(p) {
+  resetPid = p.id;
+  $("wconfava").innerHTML = avatar(p); $("wconfava").style.background = p.color;
+  $("wconfh").textContent = `Reset ${p.name}?`;
+  $("wyes").disabled = false; $("wyes").textContent = "Yes, reset";
+  $("wconf").hidden = false; $("wno").focus();
+}
+$("wno").onclick = () => { $("wconf").hidden = true; resetPid = null; };
+$("wyes").onclick = async () => {
+  if (!resetPid) return;
+  $("wyes").disabled = true; $("wyes").textContent = "Resetting…";
+  try {
+    const r = await postWait(`/api/profiles/${resetPid}/reset`);
+    if (resetPid === r.active) { location.reload(); return; }     // the profile in use: start again from the picker
+    paintProfiles(r); whoMode(""); toast(r.message);
+  } catch (x) { $("wconf").hidden = true; whoErr(String(x.message || x)); $("wyes").disabled = false; $("wyes").textContent = "Yes, reset"; }
+};
+function showWho(on) {
+  const w = $("who");
+  if (on) { w.hidden = false; whoMode(""); requestAnimationFrame(() => requestAnimationFrame(() => w.classList.add("on"))); loadProfiles().then(whoTm); }
+  else { w.classList.remove("on"); setTimeout(() => { if (!w.classList.contains("on")) w.hidden = true; }, 360); }
+}
+$("tiles").addEventListener("click", async e => {
+  const t = e.target.closest(".tile");
+  if (!t || !profs) return;
+  const pid = t.dataset.p, cur = profs.profiles.find(p => p.id === pid);
+  if ($("who").classList.contains("resetting")) { askReset(cur); return; }
+  if ($("who").classList.contains("manage")) {
+    if (e.target.closest("[data-act=pic]")) { $("picfile").dataset.p = pid; $("picfile").value = ""; $("picfile").click(); return; }
+    const name = prompt("Profile name", cur.name);
+    if (name === null) return;
+    try { paintProfiles(await post(`/api/profiles/${pid}/name`, {name})); } catch (x) { toast(String(x.message || x)); }
+    return;
+  }
+  if (pid === profs.active) { try { sessionStorage.setItem("sfb.picked", "1"); } catch (x) {} showWho(false); startApp(); return; }
+  try { await postWait(`/api/profiles/${pid}/use`); reloadApp(); }            // a fresh page for the other profile's world
+  catch (x) { whoErr(String(x.message || x)); }
+});
+function squareCrop(file, size = 320) {          // the middle square of the picture, made small
+  return new Promise((ok, bad) => {
+    const img = new Image(), url = URL.createObjectURL(file);
+    img.onload = () => {
+      const side = Math.min(img.naturalWidth, img.naturalHeight), c = document.createElement("canvas");
+      c.width = c.height = size;
+      c.getContext("2d").drawImage(img, (img.naturalWidth - side) / 2, (img.naturalHeight - side) / 2, side, side, 0, 0, size, size);
+      URL.revokeObjectURL(url); c.toBlob(b => b ? ok(b) : bad(new Error("Cannot read that picture.")), "image/jpeg", 0.9);
+    };
+    img.onerror = () => { URL.revokeObjectURL(url); bad(new Error("Cannot read that picture.")); };
+    img.src = url;
+  });
+}
+$("picfile").onchange = async e => {
+  const f = e.target.files[0], pid = e.target.dataset.p;
+  if (!f) return;
+  try {
+    const r = await fetch(`/api/profiles/${pid}/picture`, {method: "POST", headers: {"Content-Type": "image/jpeg"}, body: await squareCrop(f)});
+    const d = await r.json().catch(() => ({}));
+    if (!r.ok) throw new Error(d.detail || r.statusText);
+    paintProfiles(d); toast("Picture saved.");
+  } catch (x) { toast(String(x.message || x)); }
+};
+$("whomanage").onclick = () => whoMode($("who").classList.contains("manage") ? "" : "manage");
+$("whoreset").onclick = () => whoMode($("who").classList.contains("resetting") ? "" : "resetting");
+document.addEventListener("keydown", e => {
+  if (e.key !== "Escape" || $("who").hidden) return;
+  if (!$("wconf").hidden) $("wconf").hidden = true;
+  else if ($("who").classList.contains("resetting")) whoMode("");
+  else if (appOn) showWho(false);                   // the first time, a profile must be picked
+});
+$("profbtn").onclick = $("profswitch").onclick = () => showWho(true);
+let picked = false;
+try { picked = sessionStorage.getItem("sfb.picked") === "1"; } catch (e) {}   // kept for this browser tab, so a refresh skips the picker
+if (picked) { loadProfiles(); startApp(); }          // a refresh, a profile switch, a time-machine move or a site update
+else showWho(true);                                  // a new tab: "Who's trading?" first
+</script>
+</body>
+</html>

@@ -1,0 +1,345 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Paper Trading Bot</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;
+background:#0b0f16;color:#e6edf3;min-height:100vh;padding:26px 20px 60px}
+.wrap{max-width:1280px;margin:0 auto}
+a{color:#58a6ff}
+
+/* header */
+header{display:flex;flex-wrap:wrap;align-items:center;gap:16px;margin-bottom:22px}
+h1{font-size:22px;font-weight:650;letter-spacing:-.2px}
+h1 span{color:#8b949e;font-weight:400;font-size:14px;margin-left:10px}
+.badge{display:inline-flex;align-items:center;gap:7px;background:#12261e;border:1px solid #238636;
+color:#3fb950;padding:5px 12px;border-radius:20px;font-size:12px;font-weight:600}
+.dot{width:7px;height:7px;border-radius:50%;background:#3fb950;animation:p 2s infinite}
+@keyframes p{0%,100%{opacity:1}50%{opacity:.35}}
+
+/* controls */
+.panel{background:#11161f;border:1px solid #232a35;border-radius:14px;padding:20px;margin-bottom:20px}
+.ctrls{display:flex;flex-wrap:wrap;gap:18px;align-items:flex-end}
+.field{display:flex;flex-direction:column;gap:7px}
+label{font-size:11px;text-transform:uppercase;letter-spacing:.08em;color:#8b949e;font-weight:600}
+.seg{display:flex;background:#0b0f16;border:1px solid #232a35;border-radius:10px;padding:4px;gap:4px}
+.seg button{background:none;border:none;color:#8b949e;padding:9px 22px;border-radius:7px;
+font-size:14px;font-weight:600;cursor:pointer;transition:.15s;font-family:inherit}
+.seg button.on{background:#1f6feb;color:#fff}
+.seg button:hover:not(.on){color:#e6edf3}
+input[type=number]{background:#0b0f16;border:1px solid #232a35;color:#e6edf3;padding:11px 14px;
+border-radius:10px;font-size:16px;width:190px;font-family:inherit;font-variant-numeric:tabular-nums}
+input[type=number]:focus{outline:none;border-color:#1f6feb}
+.run{background:#238636;color:#fff;border:none;padding:12px 30px;border-radius:10px;font-size:15px;
+font-weight:650;cursor:pointer;font-family:inherit;transition:.15s}
+.run:hover:background:#2ea043}
+.run:disabled{background:#21262d;color:#8b949e;cursor:not-allowed}
+.hint{font-size:12.5px;color:#8b949e;margin-top:12px;line-height:1.6}
+.hint b{color:#c9d1d9}
+
+/* kpi */
+.kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(178px,1fr));gap:13px;margin-bottom:20px}
+.kpi{background:#11161f;border:1px solid #232a35;border-radius:12px;padding:15px 17px}
+.kpi .l{font-size:10.5px;text-transform:uppercase;letter-spacing:.07em;color:#8b949e;
+margin-bottom:7px;font-weight:600}
+.kpi .v{font-size:24px;font-weight:650;font-variant-numeric:tabular-nums;line-height:1.15}
+.kpi .n{font-size:11.5px;color:#8b949e;margin-top:5px}
+.pos{color:#3fb950}.neg{color:#f85149}.warn{color:#d29922}
+
+/* cards */
+.card{background:#11161f;border:1px solid #232a35;border-radius:14px;padding:20px;margin-bottom:20px}
+.card h3{font-size:13px;text-transform:uppercase;letter-spacing:.07em;color:#8b949e;
+margin-bottom:15px;font-weight:600}
+.cols{display:grid;grid-template-columns:1fr 1fr;gap:20px}
+@media(max-width:900px){.cols{grid-template-columns:1fr}}
+
+/* tables */
+table{width:100%;border-collapse:collapse;font-size:13px}
+th{text-align:left;font-size:10.5px;text-transform:uppercase;letter-spacing:.06em;color:#8b949e;
+padding:9px 10px;border-bottom:1px solid #232a35;font-weight:600;white-space:nowrap}
+td{padding:9px 10px;border-bottom:1px solid #1a2029;font-variant-numeric:tabular-nums;white-space:nowrap}
+tr:last-child td{border-bottom:none}
+tbody tr:hover{background:#151b25}
+.scroll{max-height:400px;overflow-y:auto}
+.scroll::-webkit-scrollbar{width:8px}
+.scroll::-webkit-scrollbar-thumb{background:#2d333b;border-radius:4px}
+.mono{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:12px}
+.tag{display:inline-block;padding:2px 8px;border-radius:20px;font-size:10.5px;font-weight:600;
+background:#1a2029;color:#8b949e}
+.tag.stop{background:#2d1214;color:#f85149}
+.tag.target{background:#12261e;color:#3fb950}
+.tag.break{background:#2b1f0a;color:#d29922}
+
+/* live */
+.livebar{display:flex;flex-wrap:wrap;gap:26px;align-items:center}
+.livenum{font-size:27px;font-weight:650;font-variant-numeric:tabular-nums}
+.livelbl{font-size:11px;text-transform:uppercase;letter-spacing:.07em;color:#8b949e;font-weight:600}
+.chg{font-size:14px;font-weight:600;margin-top:2px}
+.movers{display:grid;grid-template-columns:repeat(auto-fill,minmax(148px,1fr));gap:9px;margin-top:15px}
+.mv{background:#0b0f16;border:1px solid #1a2029;border-radius:9px;padding:10px 12px}
+.mv .s{font-size:11.5px;color:#8b949e;font-weight:600}
+.mv .p{font-size:15px;font-weight:650;font-variant-numeric:tabular-nums;margin-top:3px}
+
+/* misc */
+.empty{color:#8b949e;font-size:14px;padding:26px;text-align:center}
+.spin{display:inline-block;width:15px;height:15px;border:2px solid #30363d;border-top-color:#58a6ff;
+border-radius:50%;animation:r .8s linear infinite;vertical-align:-2px;margin-right:8px}
+@keyframes r{to{transform:rotate(360deg)}}
+.note{background:#0d1a2b;border:1px solid #1f3a5f;border-left:3px solid #1f6feb;border-radius:8px;
+padding:13px 16px;font-size:13px;line-height:1.65;color:#c9d1d9;margin-bottom:20px}
+.warnbox{background:#2b1f0a;border:1px solid #5c4413;border-left:3px solid #d29922;border-radius:8px;
+padding:13px 16px;font-size:13px;line-height:1.65;color:#e6cf9a;margin-bottom:20px}
+svg{display:block;width:100%;overflow:visible}
+.foot{color:#8b949e;font-size:12px;text-align:center;margin-top:34px;line-height:1.7}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header>
+  <h1>Paper Trading Bot <span>real data &middot; dummy money</span></h1>
+  <div class="badge"><span class="dot"></span>PAPER ONLY &mdash; no broker, no live orders</div>
+</header>
+
+<div class="panel">
+  <div class="ctrls">
+    <div class="field">
+      <label>Market</label>
+      <div class="seg" id="seg">
+        <button data-m="india" class="on">&#8377; India</button>
+        <button data-m="us">$ US</button>
+      </div>
+    </div>
+    <div class="field">
+      <label>Money to trade with (dummy)</label>
+      <input type="number" id="capital" value="500000" min="1" step="1">
+    </div>
+    <button class="run" id="runBtn">RUN BOT</button>
+  </div>
+  <div class="hint" id="hint"></div>
+</div>
+
+<div class="note" id="disclaimer">
+  <b>What you are looking at.</b> This runs the bot on <b>real market prices</b> from Yahoo
+  Finance using <b>fake money</b> that you choose. It never connects to a broker and never
+  places a live order. The result is a backtest over ~340 trading days, not a track record.
+</div>
+
+<div id="liveCard" class="card" style="display:none">
+  <h3>Live market &mdash; <span id="liveMkt"></span> <span id="liveAge" class="mono" style="color:#8b949e;font-size:11px"></span></h3>
+  <div class="livebar" id="liveBar"></div>
+  <div class="movers" id="movers"></div>
+</div>
+
+<div class="kpis" id="kpis"></div>
+
+<div class="cols" id="charts" style="display:none">
+  <div class="card">
+    <h3>Equity curve</h3>
+    <div id="curve"></div>
+  </div>
+  <div class="card">
+    <h3>Index trend (60 days)</h3>
+    <div id="idxChart"></div>
+  </div>
+</div>
+
+<div class="cols">
+  <div class="card">
+    <h3>Trades</h3>
+    <div class="scroll" id="trades"></div>
+  </div>
+  <div class="card">
+    <h3>Why the bot said no</h3>
+    <div class="scroll" id="rejects"></div>
+  </div>
+</div>
+
+<div class="foot">
+  Every trade records a structured reason &middot; risk gate blocks 0.5%/trade, 1%/day,
+  2%/week, 5% drawdown, 10%/stock, 5 positions<br>
+  Fills happen at the next bar's open &mdash; no look-ahead &middot; R:R is measured
+  <b>after</b> costs
+</div>
+
+</div>
+
+<script>
+let MARKET='india', CUR={}, RESULT=null, LIVE=null, POLL=null, JOB=null;
+
+const $=id=>document.getElementById(id);
+const fmt=(n,c)=>{const s=c==='INR'?'\u20b9':'$';const a=Math.abs(n);
+  return (n<0?'-':'')+s+a.toLocaleString('en-US',{maximumFractionDigits:0});};
+const pct=n=>(n>=0?'+':'')+n.toFixed(2)+'%';
+
+/* ---------- chart ---------- */
+function line(vals,w,h,color,fill){
+  if(!vals||vals.length<2)return '<div class="empty">not enough data</div>';
+  const lo=Math.min(...vals),hi=Math.max(...vals),r=(hi-lo)||1,P=10;
+  const n=vals.length,pts=vals.map((v,i)=>{
+    const x=P+(w-2*P)*i/(n-1), y=h-P-(h-2*P)*(v-lo)/r; return [x,y];});
+  const d=pts.map(p=>p[0].toFixed(1)+','+p[1].toFixed(1)).join(' ');
+  const area=P+','+(h-P)+' '+d+' '+(w-P)+','+(h-P);
+  const base=pts[0][1], end=pts[pts.length-1][1];
+  const col=color||(end<base?'#3fb950':'#f85149');
+  let s=`<svg viewBox="0 0 ${w} ${h}" preserveAspectRatio="none" style="height:${h}px">`;
+  if(fill!==false)s+=`<polygon points="${area}" fill="${col}" opacity=".12"/>`;
+  s+=`<polyline points="${d}" fill="none" stroke="${col}" stroke-width="2" stroke-linejoin="round"/>`;
+  s+=`<line x1="${P}" y1="${base.toFixed(1)}" x2="${w-P}" y2="${base.toFixed(1)}" stroke="#8b949e" stroke-width="1" stroke-dasharray="4 4" opacity=".5"/>`;
+  s+='</svg>'; return s;
+}
+
+/* ---------- render ---------- */
+function renderLive(){
+  if(!LIVE||!LIVE.index){$('liveCard').style.display='none';return;}
+  $('liveCard').style.display='block';
+  $('liveMkt').textContent=LIVE.market.toUpperCase();
+  $('liveAge').textContent=LIVE.index.date?('last bar '+LIVE.index.date):'';
+  const i=LIVE.index,f=LIVE.fear;
+  const cls=i.change_pct>=0?'pos':'neg';
+  let h=`<div><div class="livelbl">${i.label}</div>
+    <div class="livenum">${i.last.toLocaleString('en-US',{maximumFractionDigits:1})}</div>
+    <div class="chg ${cls}">${pct(i.change_pct)}</div></div>`;
+  if(f){const fc=f.last>20?'warn':'';
+    h+=`<div><div class="livelbl">${f.label}</div>
+      <div class="livenum ${fc}">${f.last.toFixed(2)}</div>
+      <div class="chg" style="color:#8b949e">volatility</div></div>`;}
+  h+=`<div style="flex:1;min-width:220px">${line(i.trend,520,80)}</div>`;
+  $('liveBar').innerHTML=h;
+
+  const syms=(LIVE.symbols||[]).slice()
+    .sort((a,b)=>Math.abs(b.change_pct)-Math.abs(a.change_pct)).slice(0,12);
+  $('movers').innerHTML=syms.map(s=>{
+    const c=s.change_pct>=0?'pos':'neg';
+    return `<div class="mv"><div class="s">${s.symbol}</div>
+      <div class="p">${s.last.toLocaleString('en-US',{maximumFractionDigits:2})}</div>
+      <div class="chg ${c}" style="font-size:12px">${pct(s.change_pct)}</div></div>`;}).join('');
+}
+
+function renderResult(){
+  if(!RESULT){$('kpis').innerHTML='';$('charts').style.display='none';
+    $('trades').innerHTML='<div class="empty">Press RUN BOT to trade your money on real data.</div>';
+    $('rejects').innerHTML='<div class="empty">No run yet.</div>';return;}
+  const s=RESULT.stats,c=RESULT.currency;
+  const ret=(s.ending_equity/RESULT.capital-1)*100;
+  const n=s.n_trades;
+  const sample=n<30?`${n} trades \u2014 too few to conclude`:
+               n<100?`${n} trades \u2014 suggestive only`:`${n} trades`;
+  const pf=s.profit_factor;
+  const K=(l,v,nt,cl)=>`<div class="kpi"><div class="l">${l}</div>
+    <div class="v ${cl||''}">${v}</div><div class="n">${nt||''}</div></div>`;
+  $('kpis').innerHTML=
+    K('Net P&L',fmt(s.net_pnl,c),`${ret>=0?'+':''}${ret.toFixed(2)}% on ${fmt(RESULT.capital,c)}`,
+      s.net_pnl>=0?'pos':'neg')+
+    K('Trades',n,sample)+
+    K('Win rate',s.win_rate.toFixed(1)+'%',`${s.n_wins}W / ${s.n_losses}L`)+
+    K('Profit factor',isFinite(pf)?pf.toFixed(2):'\u221e',
+      pf>=1?'gross profit / loss':'gross profit / loss',pf>=1?'pos':'neg')+
+    K('Max drawdown',s.max_drawdown_pct.toFixed(2)+'%','limit is 5.00%',
+      s.max_drawdown_pct<=-5?'neg':'')+
+    K('Expectancy',(s.expectancy_r>=0?'+':'')+s.expectancy_r.toFixed(2)+'R','avg R per trade',
+      s.expectancy_r>=0?'pos':'neg')+
+    K('Costs paid',fmt(s.total_costs,c),
+      `${s.costs_as_pct_of_capital.toFixed(2)}% of capital`)+
+    K('Capital',fmt(RESULT.capital,c),`you set this \u2014 dummy`);
+
+  $('charts').style.display='grid';
+  $('curve').innerHTML=line(RESULT.curve.map(p=>p.equity),560,220);
+  if(LIVE&&LIVE.index)$('idxChart').innerHTML=line(LIVE.index.trend,560,220);
+
+  const T=RESULT.trades;
+  if(!T.length)$('trades').innerHTML='<div class="empty">No trades in this window.</div>';
+  else $('trades').innerHTML='<table><thead><tr><th>Exit</th><th>Symbol</th><th>Qty</th>'+
+    '<th>Entry</th><th>Exit&#8202;px</th><th>P&L</th><th>R</th><th>Reason</th></tr></thead><tbody>'+
+    T.map(t=>{const cl=t.pnl>=0?'pos':'neg';
+      const rc={stop_loss:'stop',target:'target',trend_break:'break'}[t.exit_reason]||'';
+      return `<tr><td class="mono">${t.exit_date}</td><td><b>${t.symbol}</b></td>
+        <td>${t.quantity}</td><td>${t.entry_price.toFixed(2)}</td>
+        <td>${t.exit_price.toFixed(2)}</td>
+        <td class="${cl}">${fmt(t.pnl,c)}</td>
+        <td class="${cl}">${t.r_multiple>=0?'+':''}${t.r_multiple.toFixed(2)}</td>
+        <td><span class="tag ${rc}">${t.exit_reason}</span></td></tr>`;}).join('')+
+    '</tbody></table>';
+
+  const R=RESULT.rejections,keys=Object.keys(R);
+  if(!keys.length)$('rejects').innerHTML='<div class="empty">Nothing was blocked.</div>';
+  else{
+    const tot=keys.reduce((a,k)=>a+R[k],0);
+    $('rejects').innerHTML='<table><thead><tr><th>Rule that blocked the bar</th>'+
+      '<th style="text-align:right">Times</th><th style="text-align:right">Share</th></tr></thead><tbody>'+
+      keys.map(k=>`<tr><td class="mono">${k}</td><td style="text-align:right">${R[k].toLocaleString()}</td>
+        <td style="text-align:right;color:#8b949e">${(R[k]/tot*100).toFixed(1)}%</td></tr>`).join('')+
+      `</tbody><tfoot><tr style="font-weight:650"><td>Total blocks</td>
+        <td style="text-align:right">${tot.toLocaleString()}</td><td></td></tr></tfoot></table>`;
+  }
+}
+
+/* ---------- data ---------- */
+async function loadMarkets(){
+  const r=await(await fetch('/api/markets')).json();
+  CUR={};r.markets.forEach(m=>CUR[m.id]=m);
+  const c=CUR[MARKET];
+  if(c){$('capital').value=c.capital;$('hint').innerHTML=
+    `<b>${c.n_symbols}</b> symbols &middot; round-trip cost <b>${c.cost_pct}%</b> &middot; `+
+    `risk <b>${c.risk_per_trade_pct}%</b> per trade &middot; 340 trading days of real history.`;}
+  const res=await(await fetch('/api/result/'+MARKET)).json();
+  if(res.ready){RESULT=res.data;renderResult();}
+}
+
+async function loadLive(){
+  try{
+    const r=await(await fetch('/api/live/'+MARKET)).json();
+    if(r.index){LIVE=r;renderLive();
+      if(RESULT&&$('idxChart'))$('idxChart').innerHTML=line(LIVE.index.trend,560,220);}
+  }catch(e){}
+}
+
+async function run(){
+  const cap=parseFloat($('capital').value);
+  if(!cap||cap<=0){alert('Enter an amount greater than zero.');return;}
+  $('runBtn').disabled=true;
+  $('runBtn').innerHTML='<span class="spin"></span>RUNNING\u2026';
+  $('kpis').innerHTML='';
+  $('charts').style.display='none';
+  $('trades').innerHTML='<div class="empty"><span class="spin"></span>Fetching real data and trading your money\u2026</div>';
+  $('rejects').innerHTML='<div class="empty">\u2026</div>';
+  try{
+    const r=await(await fetch('/api/run',{method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({market:MARKET,capital:cap})})).json();
+    JOB=r.job_id;
+    const t=setInterval(async()=>{
+      const j=await(await fetch('/api/job/'+JOB)).json();
+      if(j.status==='done'){clearInterval(t);
+        RESULT=j.result;renderResult();
+        $('runBtn').disabled=false;$('runBtn').textContent='RUN BOT';
+      }else if(j.status==='error'){clearInterval(t);
+        $('trades').innerHTML='<div class="empty" style="color:#f85149">Failed: '+j.error+'</div>';
+        $('runBtn').disabled=false;$('runBtn').textContent='RUN BOT';}
+    },900);
+  }catch(e){
+    $('trades').innerHTML='<div class="empty" style="color:#f85149">'+e+'</div>';
+    $('runBtn').disabled=false;$('runBtn').textContent='RUN BOT';}
+}
+
+/* ---------- wire ---------- */
+document.querySelectorAll('#seg button').forEach(b=>b.addEventListener('click',()=>{
+  document.querySelectorAll('#seg button').forEach(x=>x.classList.remove('on'));
+  b.classList.add('on');MARKET=b.dataset.m;
+  const c=CUR[MARKET];if(c)$('capital').value=c.capital;
+  LIVE=null;renderLive();loadLive();loadMarkets();}));
+$('runBtn').addEventListener('click',run);
+$('capital').addEventListener('change',async()=>{
+  const cap=parseFloat($('capital').value);
+  if(cap>0)await fetch('/api/capital',{method:'POST',
+    headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({market:MARKET,capital:cap})});});
+
+loadMarkets();loadLive();
+POLL=setInterval(loadLive,45000);
+</script>
+</body>
+</html>
